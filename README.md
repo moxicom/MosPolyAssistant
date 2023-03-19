@@ -1,7 +1,6 @@
 # MOSPOLYASSISTANT
 ## _Speed up interaction with important information while you study_
 
-Dillinger is a cloud-enabled, mobile-ready, offline-storage compatible,
 MOSPOLYASSISTANT is a telegram bot that allows you to:
 
 - Create your own group
