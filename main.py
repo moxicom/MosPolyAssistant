@@ -1,9 +1,13 @@
 from aiogram.utils import executor
 from start_bot import dp
 
+from handlers import register
 
 def on_startup():
     print("Bot was started")
+
+
+register.register_handlers(dp)
 
 
 # other.register_handlers_other(dp)
