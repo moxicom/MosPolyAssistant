@@ -92,7 +92,7 @@ async def fetch_groups_info(group_name: VARCHAR):
                         Column('id', Integer, primary_key=True),
                         Column('name', VARCHAR(50)),
                         Column('password', VARCHAR))
-        selectStmt = select(table).where(table.c.name == name)
+        selectStmt = select(table).where(table.c.name == group_name)
         result = await conn.execute(selectStmt)
         group_info = result.fetchall()
         print('--------------------------\n fetch_groups_info result = \n', group_info, '\n--------------------------')
