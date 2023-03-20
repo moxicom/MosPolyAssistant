@@ -30,7 +30,7 @@ async def createTable():
     
 
 ########################### users #######################
-async def insert_users(name, group_id, tg_id):
+async def insert_users(name: VARCHAR, group_id: int, tg_id: int):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
@@ -73,19 +73,19 @@ async def delete_users(tg_id: int):
 
 
 ########################### groups_info #################
-async def insert_groups_info(name, password):
+async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("groups_info", metadata,
                         Column('id', Integer, primary_key=True),
                         Column('name', VARCHAR(50)),
                         Column('password', VARCHAR))
-        insertStmt = table.insert().values(name=name, password=password)
+        insertStmt = table.insert().values(name=group_name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
         print('--------------' + 'groups info commited' + '------------')
     
-async def fetch_groups_info(name: VARCHAR):
+async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("groups_info", metadata,

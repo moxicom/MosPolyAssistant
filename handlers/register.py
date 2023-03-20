@@ -60,7 +60,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
     async with state.proxy() as data:
         if (data['role'] == '0'):
             try:
-                fetch = await db.fetch_groups_info(name = message.text)
+                fetch = await db.fetch_groups_info(group_name = message.text)
                 if ( len(fetch) != 0):
                     data['group'] = message.text
                     await message.reply('Группа найдена, введите пароль')
@@ -73,7 +73,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
                 await state.finish()
         elif (data['role'] == '2'):
             try:
-                fetch = await db.fetch_groups_info(name = message.text)
+                fetch = await db.fetch_groups_info(group_name = message.text)
                 if ( len(fetch) == 0):
                     data['group'] = message.text
                     await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы')
@@ -92,7 +92,7 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
     async with state.proxy() as data:
             if (data['role'] == '0'):
                 try:
-                    group_info_fetch = await db.fetch_groups_info(name = data['group'])
+                    group_info_fetch = await db.fetch_groups_info(group_name = data['group'])
                     print('---users_password_check (role 0)--- \n', group_info_fetch)
                     if (hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]): 
                         await message.answer('Пароль верный')
@@ -121,9 +121,9 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
         if (data['password'] == message.text):
             await message.reply('Пароли совпадают.\n Новая группа успешно создана')
             data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
-            await db.insert_groups_info(name=data['group'], password=data['password'])
+            await db.insert_groups_info(group_name=data['group'], password=data['password'])
 
-            group_id = (await db.fetch_groups_info(name = data['group']))[0][0]
+            group_id = (await db.fetch_groups_info(group_name = data['group']))[0][0]
             await db.insert_users(name = data['group'], group_id = group_id, tg_id=message.from_user.id)
 
             user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
