@@ -60,7 +60,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
     async with state.proxy() as data:
         if (data['role'] == '0'):
             try:
-                fetch = await db.fetch_groups_info(group_name = message.text)
+                fetch = await db.fetch_groups_info(group_name= message.text)
                 if ( len(fetch) != 0):
                     data['group'] = message.text
                     await message.reply('Группа найдена, введите пароль')
