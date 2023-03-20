@@ -7,7 +7,7 @@ import asyncio
 # myBase = base()
 engine = asyncio_ext.create_async_engine(
     "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
-    echo=True,
+    echo=False,
     future=True
     )
 
@@ -83,6 +83,20 @@ async def insert_groups_info(name, password):
         insertStmt = table.insert().values(name=name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
+        print('------------------------' + 'groups info commited' + '-------------------------')
+    
+async def fetch_groups_info(name: VARCHAR):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("groups_info", metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('name', VARCHAR(50)),
+                        Column('password', VARCHAR))
+        selectStmt = select(table).where(table.c.name == name)
+        result = await conn.execute(selectStmt)
+        group_info = result.fetchall()
+        print('--------------------------\n', group_info, '\n--------------------------')
+        return group_info
 
 
 
@@ -101,19 +115,7 @@ async def insert_groups_members(member_id: int, group_id: int, role: int):
         await conn.commit()
 
 
-async def fetch_groups_members(group_id: int):
-    async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_members", metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('member_id', Integer),
-                        Column('group_id', Integer),
-                        Column('role', Integer))
-        selectStmt = select([table]).where(table.c.group_id == group_id)
-        result = await conn.execute(selectStmt)
-        messages = await result.fetchall()
-        print(messages)
-        return messages
+
     
 
 
@@ -182,4 +184,4 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
 loop = asyncio.get_event_loop()
 # loop.run_until_complete(insert_groups_info(name='qwe', password='zxc'))
 # loop.run_until_complete(insert_users("qwe", 1, 22))
-loop.run_until_complete(delete_users(22))
+#loop.run_until_complete(fetch_groups_info(22))
