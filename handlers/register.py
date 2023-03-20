@@ -103,7 +103,6 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
                         await state.finish()
                     else:
                         await message.answer('Пароль неверный\nВведите пароль снова')
-                        await FSMregister.password.set()
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
                     await state.finish()
