@@ -22,7 +22,7 @@ class FSMregister(StatesGroup):
 
 async def register_start(message: types.Message):
     await message.reply("Отлично, как вас зовут? (Пример: Иванов И)")
-    print("1")  
+    print('----register_start----')  
     await FSMregister.name.set()
 
 
@@ -56,17 +56,17 @@ async def user_role_regular_set(callback: types.CallbackQuery, state:FSMContext)
 
 
 async def users_group_set(message: types.Message, state: FSMContext): #FSM group
-    print("group set")
+    print("group set started...")
     async with state.proxy() as data:
         if (data['role'] == '0'):
             try:
                 fetch = await db.fetch_groups_info(name = message.text)
                 if ( len(fetch) != 0):
                     data['group'] = message.text
-                    await message.reply('Отлично, группа найдена, введите пароль')
+                    await message.reply('Группа найдена, введите пароль')
                     await FSMregister.next()
                 else:
-                    await message.reply('Группа с таким именем не найдена')
+                    await message.reply('Группа с таким именем не найдена, введите еще раз')
                     await FSMregister.group.set()
             except Exception as ex : 
                 await message.reply('Ошибка ' + str(ex))
@@ -76,10 +76,10 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
                 fetch = await db.fetch_groups_info(name = message.text)
                 if ( len(fetch) == 0):
                     data['group'] = message.text
-                    await message.reply('Отлично, группа не найдена, введите пароль')
+                    await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы')
                     await FSMregister.next()
                 else:
-                    await message.reply('Группа с таким именем уже существует, придумайте новое')
+                    await message.reply('Группа с таким именем уже существует, введите другое название')
                     await FSMregister.group.set()
             except Exception as ex : 
                 await message.reply('Ошибка ' + str(ex))
@@ -88,33 +88,22 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
     # обработчик кнопки отмена
     # кнопка вернуться назад и тп (кста кнопки отмена должны быть везде, а кнопка назад на всех кроме user_name_set)
 
-    # ТО ЧТО НиЖе ЭТО ПО РОФЛУ ДЛЯ ТЕСТОВ
-    # if True:
-    #     await message.answer("Такая группа действительно существует. Вы угадали название")
-    #     async with state.proxy() as data:
-    #         data['group'] = message.text
-    #     await message.answer("Введите пароль")
-    #     await FSMregister.next()
-    
-    # #если не существует
-    # else:
-    #     await message.answer("Такой группы не существует, попробуйте ввести название заново")
-    #     await FSMregister.group.set()
-
-
 async def users_password_check(message: types.Message, state: FSMContext): #FSM password
     async with state.proxy() as data:
             if (data['role'] == '0'):
                 try:
                     group_info_fetch = await db.fetch_groups_info(name = data['group'])
-                    print(group_info_fetch)
+                    print('---users_password_check (role 0)--- \n', group_info_fetch)
                     if (hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]): 
-                        await message.answer('Пароль верный!')
+                        await message.answer('Пароль верный')
                         await message.answer(f'{data["name"]} {data["group"]}')
                         await db.insert_users(name = data['name'], group_id = group_info_fetch[0][0], tg_id=message.from_user.id)
                         user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
                         await db.insert_groups_members(member_id=user_id,group_id=group_info_fetch[0][0],role=int(data['role']))
                         await state.finish()
+                    else:
+                        await message.answer('Пароль неверный\nВведите пароль снова')
+                        await FSMregister.password.set()
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
                     await state.finish()
@@ -122,7 +111,6 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
                 try:
                     data['password'] = message.text
                     await message.reply('Повторите пароль')
-                    print("password check 1") 
                     await FSMregister.next()
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
@@ -130,9 +118,9 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
 
 async def users_password_repeating(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        print("password check 2") 
+        print("---password repeating check started....---") 
         if (data['password'] == message.text):
-            await message.reply('Пароли совпадают')
+            await message.reply('Пароли совпадают.\n Новая группа успешно создана')
             data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
             await db.insert_groups_info(name=data['group'], password=data['password'])
 
@@ -142,7 +130,7 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
             user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
             await db.insert_groups_members(member_id=user_id,group_id=group_id,role=int(data['role']))
             
-            print(data['name'], data['password'])
+            print('users_password_repeating finish\n', data['name'], data['password'])
             await state.finish()
         else:
             await message.reply('Пароли не совпадают. Введите новый пароль')

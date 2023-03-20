@@ -54,7 +54,7 @@ async def fetch_users(tg_id: int):
         selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
-        print('--------------------------\n', users, '\n--------------------------')
+        print('----------------\n fetch_users result\n ', users, '\n-------------------')
         return users
 
 
@@ -83,7 +83,7 @@ async def insert_groups_info(name, password):
         insertStmt = table.insert().values(name=name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
-        print('------------------------' + 'groups info commited' + '-------------------------')
+        print('--------------' + 'groups info commited' + '------------')
     
 async def fetch_groups_info(name: VARCHAR):
     async with engine.connect() as conn:
@@ -95,7 +95,7 @@ async def fetch_groups_info(name: VARCHAR):
         selectStmt = select(table).where(table.c.name == name)
         result = await conn.execute(selectStmt)
         group_info = result.fetchall()
-        print('--------------------------\n', group_info, '\n--------------------------')
+        print('--------------------------\n fetch_groups_info result = \n', group_info, '\n--------------------------')
         return group_info
 
 
