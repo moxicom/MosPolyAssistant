@@ -43,7 +43,7 @@ async def insert_users(name, group_id, tg_id):
         await conn.commit()
 
 
-async def fetch_users(group_id: int):
+async def fetch_users(tg_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
@@ -51,7 +51,7 @@ async def fetch_users(group_id: int):
                         Column('name', VARCHAR),
                         Column('group_id', Integer),
                         Column('tg_id', Integer))
-        selectStmt = select(table).where(table.c.group_id == group_id)
+        selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
         print('--------------------------\n', users, '\n--------------------------')

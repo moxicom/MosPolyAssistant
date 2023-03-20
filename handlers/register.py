@@ -62,6 +62,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
             try:
                 fetch = await db.fetch_groups_info(name = message.text)
                 if ( len(fetch) != 0):
+                    data['group'] = message.text
                     await message.reply('Отлично, группа найдена, введите пароль')
                     await FSMregister.next()
                 else:
@@ -74,6 +75,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
             try:
                 fetch = await db.fetch_groups_info(name = message.text)
                 if ( len(fetch) == 0):
+                    data['group'] = message.text
                     await message.reply('Отлично, группа не найдена, введите пароль')
                     await FSMregister.next()
                 else:
@@ -82,15 +84,7 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
             except Exception as ex : 
                 await message.reply('Ошибка ' + str(ex))
                 await state.finish()
-    #if (data['role'] == '1')
-        # ТУТ НУЖНА ПРОВЕРКА НА СУЩЕСТВОВАНИЕ ГРУППЫ. ЕСЛИ СУЩЕСТВУЕТ, ТО НАПИСАТЬ, ЧТО СУЗЕСТВУЕТ И ВЕРНУТЬСЯ в user_group_set
-        # ЕСЛИ не СУЩЕСТВУЕТ, ТО СЕЙВИМ ИМЯ В ДАТЕ
-        # async with state.proxy() as data:
-        #     data['group'] = ИМЯ
-    #elif (data['role'] == '0')
-        # тут надо короче проверить существование группы.
-        # если она существует, то надо просить пароль
-        # ЕСЛИ НЕ СУЩЕСТВУЕТ, то НАПИСАТЬ, ЧТО неСУщЕСТВУЕТ И ВЕРНУТЬСЯ в user_group_set
+
     # обработчик кнопки отмена
     # кнопка вернуться назад и тп (кста кнопки отмена должны быть везде, а кнопка назад на всех кроме user_name_set)
 
@@ -112,10 +106,14 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
     async with state.proxy() as data:
             if (data['role'] == '0'):
                 try:
-                    fetch = await db.fetch_groups_info(name = data['name'])
-                    if (hashlib.sha256(message.text.encode().hexdigest()) == fetch[0][2]): 
+                    group_info_fetch = await db.fetch_groups_info(name = data['group'])
+                    print(group_info_fetch)
+                    if (hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]): 
                         await message.answer('Пароль верный!')
                         await message.answer(f'{data["name"]} {data["group"]}')
+                        await db.insert_users(name = data['name'], group_id = group_info_fetch[0][0], tg_id=message.from_user.id)
+                        user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
+                        await db.insert_groups_members(member_id=user_id,group_id=group_info_fetch[0][0],role=int(data['role']))
                         await state.finish()
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
@@ -136,11 +134,19 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
         if (data['password'] == message.text):
             await message.reply('Пароли совпадают')
             data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
-            await db.insert_groups_info(name=data['name'], password=data['password'])
+            await db.insert_groups_info(name=data['group'], password=data['password'])
+
+            group_id = (await db.fetch_groups_info(name = data['group']))[0][0]
+            await db.insert_users(name = data['group'], group_id = group_id, tg_id=message.from_user.id)
+
+            user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
+            await db.insert_groups_members(member_id=user_id,group_id=group_id,role=int(data['role']))
+            
             print(data['name'], data['password'])
+            await state.finish()
         else:
-            await message.reply('Пароли не совпадают')
-            FSMregister.password.set()
+            await message.reply('Пароли не совпадают. Введите новый пароль')
+            await FSMregister.password.set()
 
 
 
