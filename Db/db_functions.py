@@ -29,6 +29,12 @@ async def createTable():
         await conn.commit()
     
 
+
+
+
+
+
+
 ########################### users #######################
 async def insert_users(name: VARCHAR, group_id: int, tg_id: int):
     async with engine.begin() as conn:
@@ -69,6 +75,11 @@ async def delete_users(tg_id: int):
         deleteStmt = table.delete().where(table.c.tg_id == tg_id)
         await conn.execute(deleteStmt)
         await conn.commit()
+    
+
+
+
+
 
 
 
@@ -85,6 +96,7 @@ async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
         await conn.commit()
         print('--------------' + 'groups info commited' + '------------')
     
+
 async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -97,6 +109,10 @@ async def fetch_groups_info(group_name: VARCHAR):
         group_info = result.fetchall()
         print('--------------------------\n fetch_groups_info result = \n', group_info, '\n--------------------------')
         return group_info
+    
+
+
+
 
 
 
@@ -115,8 +131,33 @@ async def insert_groups_members(member_id: int, group_id: int, role: int):
         await conn.commit()
 
 
-
+async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("groups_members", metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('member_id', Integer),
+                        Column('group_id', Integer),
+                        Column('role', Integer))
+        
+        if (group_id == -1 and member_id != -1):
+            selectStmt = select(table).where(table.c.member_id == member_id)
+        elif (group_id != -1 and member_id != -1):
+            selectStmt = select(table).where(table.c.group_id == group_id, table.c.member_id == member_id)
+        elif (group_id != -1 and member_id == -1):
+            selectStmt = select(table).where(table.c.group_id == group_id)   
+        else:
+            return Exception("NO ARGS")
+        
+        result = await conn.execute(selectStmt)
+        group_members = result.fetchall()
+        print('-' * 15 + '\n\t fetch_groups_members result = \n\t', group_members, '\n' + '-' * 15)
+        return group_members
     
+
+
+
+
 
 
 
@@ -132,6 +173,12 @@ async def insert_tags(group_id: int, name: str, parent_id: int):
         insertStmt = table.insert().values(group_id=group_id, name=name, parent_id=parent_id)
         await conn.execute(insertStmt)
         await conn.commit()
+    
+
+
+
+
+
 
 
 ########################### messages ####################
@@ -181,7 +228,6 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
 #         await conn.execute(deleteStmt)
 #         await conn.commit()
 
-loop = asyncio.get_event_loop()
+# loop = asyncio.get_event_loop()
 # loop.run_until_complete(insert_groups_info(name='qwe', password='zxc'))
 # loop.run_until_complete(insert_users("qwe", 1, 22))
-#loop.run_until_complete(fetch_groups_info(22))

@@ -3,13 +3,14 @@ import asyncio
 import hashlib
 
 from aiogram import types, Dispatcher
-from start_bot import dp, bot
+from start_bot import bot
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from keyboards import main_keyboards as markups
-
 from Db import db_functions as db
+from handlers import general
+
 
 
 class FSMregister(StatesGroup):
@@ -21,15 +22,20 @@ class FSMregister(StatesGroup):
 
 
 async def register_start(message: types.Message):
-    await message.reply("Отлично, как вас зовут? (Пример: Иванов И)")
-    print('----register_start----')  
-    await FSMregister.name.set()
+    exist = await general.check_user_existence(message)
+    if (not exist):
+        await message.reply("Отлично, как вас зовут? (Пример: Иванов И)")
+        print('----register_start----')  
+        await FSMregister.name.set()
+    else:
+        message.reply("Вы уже зарегестрированы :) \n Если что-то ищете, то напишите /help")
 
 
 async def user_name_set(message: types.Message, state: FSMContext):
     # ТУТ НАДО ВСТАВИТЬ ПРОВЕРКУ НА ИМЯ
     async with state.proxy() as data:
         data['name'] = message.text
+    
     await bot.send_message(message.from_user.id, "Отлично, укажите вашу роль.\n\t Если выберете старосту, то вы создаете новую группу. \
                         \n\tИначе - присоединяетесь к существующей", reply_markup=markups.role_chosing_mkp)
     await FSMregister.next()
@@ -124,7 +130,7 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
             await db.insert_groups_info(group_name=data['group'], password=data['password'])
 
             group_id = (await db.fetch_groups_info(group_name = data['group']))[0][0]
-            await db.insert_users(name = data['group'], group_id = group_id, tg_id=message.from_user.id)
+            await db.insert_users(name = data['name'], group_id = group_id, tg_id=message.from_user.id)
 
             user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
             await db.insert_groups_members(member_id=user_id,group_id=group_id,role=int(data['role']))
