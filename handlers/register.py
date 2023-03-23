@@ -90,10 +90,12 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
                 fetch = await db.fetch_groups_info(group_name= message.text)
                 if ( len(fetch) != 0):
                     data['group'] = message.text
+                    await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                     await message.reply('Группа найдена, введите пароль', reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
                 else:
                     await message.reply('Группа с таким именем не найдена, введите еще раз' , reply_markup=keyboards.reg_move_mkp)
+                    await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                     await FSMregister.group.set()
             except Exception as ex : 
                 await message.reply('Ошибка ' + str(ex))
@@ -104,9 +106,11 @@ async def users_group_set(message: types.Message, state: FSMContext): #FSM group
                 if ( len(fetch) == 0):
                     data['group'] = message.text
                     await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы', reply_markup=keyboards.reg_move_mkp)
+                    await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                     await FSMregister.next()
                 else:
                     await message.reply('Группа с таким именем уже существует, введите другое название', reply_markup=keyboards.reg_move_mkp)
+                    await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                     await FSMregister.group.set()
             except Exception as ex : 
                 await message.reply('Ошибка ' + str(ex))
@@ -127,9 +131,11 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
                         await db.insert_users(name = data['name'], group_id = group_info_fetch[0][0], tg_id=message.from_user.id)
                         user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
                         await db.insert_groups_members(member_id=user_id,group_id=group_info_fetch[0][0],role=int(data['role']))
+                        await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                         await state.finish()
                     else:
                         await message.answer('Пароль неверный\nВведите пароль снова', reply_markup=keyboards.reg_move_mkp)
+                        await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
                     await state.finish()
@@ -137,6 +143,7 @@ async def users_password_check(message: types.Message, state: FSMContext): #FSM 
                 try:
                     data['password'] = message.text
                     await message.reply('Повторите пароль', reply_markup=keyboards.reg_move_mkp)
+                    await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
                     await FSMregister.next()
                 except Exception as ex:
                     await message.reply('Ошибка ' + str(ex))
@@ -146,7 +153,8 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         print("---password repeating check started....---") 
         if (data['password'] == message.text):
-            await message.reply('Пароли совпадают.\n Новая группа успешно создана')
+            await message.reply('Пароли совпадают.\nНовая группа успешно создана')
+            await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
             data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
             await db.insert_groups_info(group_name=data['group'], password=data['password'])
 
@@ -160,6 +168,7 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
             await state.finish()
         else:
             await message.reply('Пароли не совпадают. Введите новый пароль', reply_markup=keyboards.reg_move_mkp)
+            await bot.edit_message_reply_markup(chat_id= message.chat.id, message_id= message.message_id - 1, reply_markup=None)
             await FSMregister.password.set()
 
 
