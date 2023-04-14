@@ -109,6 +109,33 @@ async def fetch_groups_info(group_name: VARCHAR):
         group_info = result.fetchall()
         print('--------------------------\n fetch_groups_info result = \n', group_info, '\n--------------------------')
         return group_info
+ 
+async def change_group_info(id: int, field: str, new_value: str):
+    """Изменение параметра в базе данных по id"""
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('group_info', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('name', VARCHAR(20)),
+                      Column('password', VARCHAR(20))
+                     )
+      
+        # Проверка на наличие значения в параметре id
+        stmt = select(table).where(table.c.id == id)
+        result = await conn.execute(stmt)
+        rows = result.fetchall()
+        if not rows:
+            return -1
+
+        # Внесение изменений
+        try:
+            update_stmt = table.update().where(table.c.id == id).values({field:new_value})
+            await conn.execute(update_stmt)
+            await conn.commit()
+            return 0
+            print('--------------' + 'group info changed' + '------------')
+        except:
+            return -1
     
 
 
