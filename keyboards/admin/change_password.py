@@ -92,8 +92,8 @@ async def process_second_word(message: types.Message, state: FSMContext):
                 second_word = message.text
                 if first_word == second_word:
                     data['password'] = str(hashlib.sha256(second_word.encode()).hexdigest())
-                    # ВОТ ТУТ БУДЕТ ЗАМЕНА В БД Я НЕ ПОНЯЛА КАК
-                    # await db.insert_groups_info(group_name=data['group'], password=data['password'])
+                    # Узнать как достается айди группы, если никак то сделать в бд по имени
+                    await db.change_group_info(id=data['group'], field='password', new_value=data['password'])
                     await message.reply("Пароль успешно изменен")
                     await state.finish()
                     await start(message)
