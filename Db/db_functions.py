@@ -7,7 +7,7 @@ from sqlalchemy import update
 
 # myBase = base()
 engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
+    "postgresql+asyncpg://postgres:1234@localhost:5432/mydatabase",
     echo=False,
     future=True
 )
