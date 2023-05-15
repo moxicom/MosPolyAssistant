@@ -10,7 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import bot
-from keyboards import main_keyboards as keyboards
+from keyboards import main_keyboards as k
 from Db import db_functions as db
 from handlers import general
 
@@ -31,19 +31,11 @@ async def change_password(callback_query: types.CallbackQuery, state: FSMContext
         await bot.send_message(callback_query.from_user.id, "Введите пароль:", reply_markup=cancel_button_markup())
         await MyStates.FIRST_WORD.set()
     except Exception as ex:
-        await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
+        await bot.answer_callback_query(callback_query.from_user.id, text="Ошибка" + str(ex))
         await state.finish()
 
 
-# @dp.callback_query_handler(lambda c: c.data == "cancel", state="*")
-async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
-    try:
-        await bot.answer_callback_query(callback_query.id)
-        # await start(callback_query.message)
-        await state.finish()
-    except Exception as ex:
-        await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
-        await state.finish()
+
 
 
 # Для первого ввода пароля
@@ -70,9 +62,9 @@ async def process_second_word(message: types.Message, state: FSMContext):
             first_word = data['first_word']
             second_word = message.text
             if first_word == second_word:
-                data['password'] = str(hashlib.sha256(second_word.encode()).hexdigest())
-                # Узнать как достается айди группы, если никак то сделать в бд по имени
-                await db.change_group_info(id=data['group'], field='password', new_value=data['password'])
+                password = str(hashlib.sha256(second_word.encode()).hexdigest())
+                group_id = await general.get_group_id_by_tg_id(tg_id=message.from_user.id)
+                await db.change_group_info(id=group_id, field='password', new_value=password)
                 await message.reply("Пароль успешно изменен")
                 await state.finish()
             else:
@@ -83,6 +75,30 @@ async def process_second_word(message: types.Message, state: FSMContext):
         await message.reply('Ошибка ' + str(ex))
         await state.finish()
 
+
+async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
+    try:
+        await state.finish()
+        await callback_query.answer()
+        role = await general.get_role_by_tg_id(callback_query.from_user.id)
+        if role == 2:
+            await bot.send_message(callback_query.from_user.id, "Вот что ты можешь сделать", reply_markup=k.admin_functions_mkp)
+        elif role == 0:
+            await bot.send_message(callback_query.from_user.id, "Вот что ты можешь сделать")
+        else:
+            bot.send_message(callback_query.from_user.id, "что-то пошло не так")
+    except Exception as ex:
+        await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
+        await state.finish()
+# @dp.callback_query_handler(lambda c: c.data == "cancel", state="*")
+# async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
+#     try:
+#         await bot.answer_callback_query(callback_query.id)
+#         # await start(callback_query.message)
+#         await state.finish()
+#     except Exception as ex:
+#         await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
+#         await state.finish()
 
 def change_password_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(change_password, lambda c: c.data == "change_password", state="*")

@@ -26,32 +26,19 @@ class MyStates(StatesGroup):
 #     return await bot.send_message(chat_id, text, reply_markup=markup)
 
 
-async def send_list_of_group(callback_query: types.CallbackQuery, state: FSMContext):  # FSM password
-    async with state.proxy() as data:
-        try:
-            group_info_fetch = await db.fetch_groups_info(group_name=data['group'])
-            answer = callback_query.data
-            message_id = callback_query.message.message_id
-            chat_id = callback_query.message.chat.id
-
-            # If the "Return" button is pressed, go back to the previous state
-            if answer == "return":
-                await bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
-                await state.finish()
-                # await send_message_with_buttons(chat_id)
-                await MyStates.CHOOSING.set()
-            else:
-                await bot.answer_callback_query(callback_query.id)
-                if answer == "Список участников":
-                    text = db.fetch_groups_members(group_id=group_info_fetch[0][0])
-                button_return = InlineKeyboardButton("Return", callback_data="return")
-                markup = InlineKeyboardMarkup().add(button_return)
-                await bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
-        except Exception as ex:
-            logging.exception(ex)
-            await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
+async def send_list_of_group(callback_query: types.CallbackQuery, state: FSMContext):
+    try:
+        await callback_query.answer()
+        group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+        users = await db.fetch_users_in_group(group_id=group_id)
+        user_names = sorted([user[1] for user in users])
+        user_names_string = '\n'.join(f"{i + 1}. {name}" for i, name in enumerate(user_names))
+        chat_id = callback_query.message.chat.id
+        await bot.send_message(chat_id=chat_id, text="Список группы:\n" + user_names_string)
+    except Exception as ex:
+        logging.exception(ex)
+        await bot.answer_callback_query(callback_query.id, text="Ошибка" + str(ex))
 
 
 def list_of_group_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(send_list_of_group, lambda c: c.data == "list_of_group", state="*")
-

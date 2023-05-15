@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from datetime import datetime
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -14,6 +16,9 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher.filters import Command
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from handlers import general
+from Db import db_functions as db
+
 
 # API_TOKEN = ''
 # #
@@ -21,85 +26,169 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 # bot = Bot(token=API_TOKEN)
 # dp = Dispatcher(bot, storage=MemoryStorage())
 
-existing_tags = []
-
 
 class States(StatesGroup):
     MESSAGE = State()
     CHOOSE_ACTION = State()
     EXISTING_TAG = State()
     NEW_TAG = State()
+    CONFIRM = State()
 
 
-# @dp.message_handler(commands=['start'])
-async def start(message: types.Message, state: FSMContext):
+async def start(callback_query: types.CallbackQuery, state: FSMContext):
     markup = ReplyKeyboardRemove()
     await state.finish()
-    await bot.send_message(chat_id=message.chat.id, text="Введите ваше сообщение:", reply_markup=markup)
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:", reply_markup=markup)
     await States.MESSAGE.set()
 
 
-# @dp.message_handler(state=States.MESSAGE)
+async def process_message(message: types.Message, state: FSMContext):
+    # Save the user's message into the state
+    await state.update_data(user_text=message.text)
+    # Call the confirm_message function to validate the message
+    await confirm_message(message, state)
+
+async def confirm_message(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        user_text = data['user_text']
+        markup = InlineKeyboardMarkup(row_width=2)
+        markup.add(InlineKeyboardButton("Да", callback_data="confirm_msg_yes"))
+        markup.add(InlineKeyboardButton("Нет", callback_data="confirm_msg_no"))
+        await message.reply("Ваше сообщение корректно?", reply_markup=markup)
+        await States.CONFIRM.set()
+
+
+async def confirm_tag(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        user_text = data['user_text']
+        tag = data['tag']
+        markup = InlineKeyboardMarkup(row_width=2)
+        markup.add(InlineKeyboardButton("Да", callback_data="confirm_tag_yes"))
+        markup.add(InlineKeyboardButton("Нет", callback_data="confirm_tag_no"))
+        await message.reply(f"Выбранный тег: {tag}\n Тег корректен?", reply_markup=markup)
+        await States.CONFIRM.set()
+
+
+async def confirm_full_message(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        user_text = data['user_text']
+        tag = data['tag']
+        markup = InlineKeyboardMarkup(row_width=2)
+        markup.add(InlineKeyboardButton("Да", callback_data="confirm_full_yes"))
+        markup.add(InlineKeyboardButton("Нет", callback_data="confirm_full_no"))
+        await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
+                            reply_markup=markup)
+        await States.CONFIRM.set()
+
+
+async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        user_text = data['user_text']
+        tag = data['tag']
+        await bot.answer_callback_query(callback_query.id)
+        group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+
+        # Insert the new tag into the tags table
+        await db.insert_tags(group_id=group_id, name=tag, parent_id=None)
+        tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
+
+        # Insert the message into the messages table
+        await db.insert_messages(group_id=group_id, title=user_text, text=user_text, tag_id=tag_id, images=None,
+                                 videos=None, files=None, created_at=datetime.now())
+
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено.")
+        await state.finish()
+
+
+async def confirm_full_no(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(chat_id=callback_query.from_user.id, text="Начинаем заново.")
+    await start(callback_query, state)
+
+
+async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await ask_for_tag(callback_query.message, state)
+
+
+async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(chat_id=callback_query.from_user.id, text="Пожалуйста, введите ваше сообщение снова.")
+    await States.MESSAGE.set()
+
+
+async def confirm_tag_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await confirm_full_message(callback_query.message, state)
+
+
+async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await ask_for_tag(callback_query.message, state)
+
+
 async def ask_for_tag(message: types.Message, state: FSMContext):
-    print('Обработка сообщения')
-    user_text = message.text
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(InlineKeyboardButton("Существующий тег", callback_data="existing_tag"))
     markup.add(InlineKeyboardButton("Добавить новый тег", callback_data="new_tag"))
 
-    await message.reply("Добавить тег?", reply_markup=markup)
-    await state.update_data(user_text=user_text)
+    await message.reply("Выберете тег", reply_markup=markup)
     await States.CHOOSE_ACTION.set()
 
 
-# @dp.callback_query_handler(lambda c: c.data == "existing_tag", state=States.CHOOSE_ACTION)
+
 async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
     print('кнопка существующий тег')
+    await bot.answer_callback_query(callback_query.id)
+    group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+    existing_tags = await db.fetch_tags(group_id)
     if existing_tags:
         markup = InlineKeyboardMarkup(row_width=2)
         for tag in existing_tags:
             markup.add(InlineKeyboardButton(tag, callback_data=f"tag_{tag}"))
+        markup.add(InlineKeyboardButton("Создать новый тег", callback_data='new_tag'))
         await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
                                     text="Выберите тег:", reply_markup=markup)
         await States.EXISTING_TAG.set()
+
     else:
         await bot.answer_callback_query(callback_query.id, "Нет существующих тегов, пожалуйста, добавьте новый тег.",
                                         show_alert=True)
 
 
-# @dp.callback_query_handler(lambda c: c.data == "new_tag", state=States.CHOOSE_ACTION)
 async def process_callback_new_tag(callback_query: types.CallbackQuery, state: FSMContext):
     print('кнопка новый тег')
+    await bot.answer_callback_query(callback_query.id)
     await bot.send_message(chat_id=callback_query.from_user.id, text="Введите новый тег:")
     await States.NEW_TAG.set()
 
 
-# @dp.message_handler(state=States.NEW_TAG)
 async def add_new_tag(message: types.Message, state: FSMContext):
     print('добавляем новый тег')
     new_tag = message.text
-    existing_tags.append(new_tag)
-    user_text = (await state.get_data()).get('user_text')
-    await message.reply(f"{user_text} {new_tag}")
-    await state.finish()
+    await state.update_data(tag=new_tag)
+    await confirm_tag(message, state)
 
-
-# @dp.callback_query_handler(state=States.EXISTING_TAG)
 async def process_callback_actual_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
     tag = callback_query.data[4:]
-    async with state.proxy() as data:
-        user_text = data['user_text']
-    tagged_message = f"{user_text} {tag}"
-    await bot.send_message(chat_id=callback_query.message.chat.id, text=tagged_message)
-    # await callback_query.answer()
-    await state.finish()
+    await callback_query.answer(callback_query.id)
+    await state.update_data(tag=tag)
+    await confirm_tag(callback_query.message, state)
 
 
 def tags_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(start, lambda c: c.data == "write_message", state="*")
-    dp.register_message_handler(ask_for_tag, state=States.MESSAGE)
+    dp.register_message_handler(process_message, state=States.MESSAGE)
     dp.register_callback_query_handler(process_callback_existing_tag, lambda c: c.data == "existing_tag",
-                              state=States.CHOOSE_ACTION)
-    dp.register_callback_query_handler(process_callback_new_tag, lambda c: c.data == "new_tag", state=States.CHOOSE_ACTION)
+                                       state=States.CHOOSE_ACTION)
+    dp.register_callback_query_handler(process_callback_new_tag, lambda c: c.data == "new_tag",
+                                       state=[States.CHOOSE_ACTION, States.EXISTING_TAG])
     dp.register_message_handler(add_new_tag, state=States.NEW_TAG)
     dp.register_callback_query_handler(process_callback_actual_existing_tag, state=States.EXISTING_TAG)
+    dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "confirm_full_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "confirm_full_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_tag_yes, lambda c: c.data == "confirm_tag_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_tag_no, lambda c: c.data == "confirm_tag_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "confirm_msg_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "confirm_msg_no", state=States.CONFIRM)

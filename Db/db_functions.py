@@ -1,6 +1,6 @@
 from sqlalchemy.ext import asyncio as asyncio_ext
 from sqlalchemy.sql import select
-from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date
+from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, and_
 from sqlalchemy.orm import declarative_base as base
 import asyncio
 from sqlalchemy import update
@@ -11,7 +11,11 @@ engine = asyncio_ext.create_async_engine(
     echo=False,
     future=True
 )
-
+# engine = asyncio_ext.create_async_engine(
+#     "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
+#     echo=False,
+#     future=True
+# )
 
 async def createTable():
     metadata = MetaData()
@@ -59,6 +63,21 @@ async def fetch_users(tg_id: int):
         return users
 
 
+async def fetch_users_in_group(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('users', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('name', VARCHAR),
+                      Column('group_id', Integer),
+                      Column('tg_id', Integer))
+        selectStmt = select(table).where(table.c.group_id == group_id)
+        result = await conn.execute(selectStmt)
+        users = result.fetchall()
+        print('----------------\n fetch_users_in_group result\n ', users, '\n-------------------')
+        return users
+
+
 async def delete_users(tg_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -100,11 +119,26 @@ async def fetch_groups_info(group_name: VARCHAR):
         return group_info
 
 
+async def fetch_group_info_by_id(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("groups_info", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('name', VARCHAR(50)),
+                      Column('password', VARCHAR))
+        selectStmt = select(table).where(table.c.id == group_id)
+        result = await conn.execute(selectStmt)
+        group_info = result.fetchone()
+        print('--------------------------\n fetch_group_info_by_id result = \n', group_info,
+              '\n--------------------------')
+        return group_info if group_info else None
+
+
 async def change_group_info(id: int, field: str, new_value: str):
     """Изменение параметра в базе данных по id"""
     async with engine.connect() as conn:
         metadata = MetaData()
-        table = Table('group_info', metadata,
+        table = Table('groups_info', metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR(20)),
                       Column('password', VARCHAR(20))
@@ -165,6 +199,39 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
         group_members = result.fetchall()
         print('-' * 15 + '\n\t fetch_groups_members result = \n\t', group_members, '\n' + '-' * 15)
         return group_members
+
+
+async def fetch_tags(group_id: int):
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        selectStmt = select(table)
+        result = await conn.execute(selectStmt)
+        rows = result.fetchall()
+        return [row[2] for row in rows]
+
+
+async def get_tag_id_by_name(tag_name: str, group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('tags', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+
+        select_stmt = select(table).where(and_(table.c.name == tag_name, table.c.group_id == group_id))
+        result = await conn.execute(select_stmt)
+        row = result.fetchone()
+
+        if row:
+            return row[0]
+        else:
+            return None
 
 
 ########################### tags ########################
