@@ -22,3 +22,16 @@ list_of_group = InlineKeyboardButton("Список группы", callback_data=
 write_message = InlineKeyboardButton("Написать сообщение", callback_data="write_message")
 admin_functions_mkp.row(list_of_group, change_password)
 admin_functions_mkp.row(write_message)
+
+
+######################## CLIENT BUTTONS ########################
+
+def get_tag_keyboard(tag_id):
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(InlineKeyboardButton("Вернуться назад", callback_data=f"back_{tag_id}"))
+    return keyboard
+
+
+get_message_markup = InlineKeyboardMarkup(row_width=2)
+get_message_button = InlineKeyboardButton("Получить сообщение", callback_data="get_message")
+get_message_markup.row(get_message_button)

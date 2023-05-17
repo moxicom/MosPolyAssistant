@@ -36,7 +36,7 @@ async def register_start(message: types.Message):
         print('----register_start----')
         await FSMregister.name.set()
     else:
-        await message.reply("Вы уже зарегестрированы :) \n Если что-то ищете, то напишите /help")
+        await message.reply("Вы уже зарегистрированы :) \n Если что-то ищете, то напишите /help")
 
 
 async def user_name_set(message: types.Message, state: FSMContext):
