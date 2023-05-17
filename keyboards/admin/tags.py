@@ -1,30 +1,12 @@
-import asyncio
-import logging
 from datetime import datetime
-
 from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from aiogram.utils import executor
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
-from aiogram.types import ParseMode
-from aiogram.utils.markdown import text, quote_html
 from config import bot
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.dispatcher.filters import Command
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_functions as db
-
-
-# API_TOKEN = ''
-# #
-# # logging.basicConfig(level=logging.INFO)
-# bot = Bot(token=API_TOKEN)
-# dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 class States(StatesGroup):
@@ -49,12 +31,14 @@ async def process_message(message: types.Message, state: FSMContext):
     # Call the confirm_message function to validate the message
     await confirm_message(message, state)
 
+
 async def confirm_message(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         user_text = data['user_text']
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="confirm_msg_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="confirm_msg_no"))
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
         await message.reply("Ваше сообщение корректно?", reply_markup=markup)
         await States.CONFIRM.set()
 
@@ -66,6 +50,7 @@ async def confirm_tag(message: types.Message, state: FSMContext):
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="confirm_tag_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="confirm_tag_no"))
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
         await message.reply(f"Выбранный тег: {tag}\n Тег корректен?", reply_markup=markup)
         await States.CONFIRM.set()
 
@@ -77,9 +62,16 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="confirm_full_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="confirm_full_no"))
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
         await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
                             reply_markup=markup)
         await States.CONFIRM.set()
+
+
+async def get_tg_ids_in_group(group_id: int, exclude_tg_id: int):
+    users_in_group = await db.fetch_users_in_group(group_id)
+    tg_ids = [user[3] for user in users_in_group if user[3] != exclude_tg_id]
+    return tg_ids
 
 
 async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContext):
@@ -89,8 +81,11 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
         await bot.answer_callback_query(callback_query.id)
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
 
+        # Fetch all existing tags
+        existing_tags = await db.fetch_tags(group_id=group_id)
         # Insert the new tag into the tags table
-        await db.insert_tags(group_id=group_id, name=tag, parent_id=None)
+        if tag not in existing_tags:
+            await db.insert_tags(group_id=group_id, name=tag, parent_id=None)
         tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
         # Insert the message into the messages table
@@ -98,6 +93,10 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
                                  videos=None, files=None, created_at=datetime.now())
 
         await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено.")
+        exclude_tg_id = callback_query.from_user.id  # The tg_id to exclude
+        tg_ids = await get_tg_ids_in_group(group_id, exclude_tg_id)
+        for id in tg_ids:
+            await bot.send_message(chat_id=id, text=tag + '\n' + user_text)
         await state.finish()
 
 
@@ -137,7 +136,6 @@ async def ask_for_tag(message: types.Message, state: FSMContext):
     await States.CHOOSE_ACTION.set()
 
 
-
 async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
     print('кнопка существующий тег')
     await bot.answer_callback_query(callback_query.id)
@@ -170,6 +168,13 @@ async def add_new_tag(message: types.Message, state: FSMContext):
     await state.update_data(tag=new_tag)
     await confirm_tag(message, state)
 
+
+async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    # await bot.send_message(chat_id=callback_query.from_user.id, text="Вы отменили отправку сообщения.")
+    await state.finish()
+
+
 async def process_callback_actual_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
     tag = callback_query.data[4:]
     await callback_query.answer(callback_query.id)
@@ -192,3 +197,4 @@ def tags_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(confirm_tag_no, lambda c: c.data == "confirm_tag_no", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "confirm_msg_yes", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "confirm_msg_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel", state="*")  # Add this line
