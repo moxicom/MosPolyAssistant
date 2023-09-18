@@ -118,8 +118,7 @@ async def users_password_check(message: types.Message, state: FSMContext):  # FS
                 if (hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]):
                     await message.answer('Пароль верный')
                     await message.answer(f'{data["name"]} {data["group"]}')
-                    await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0],
-                                          tg_id=message.from_user.id)
+                    await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
                     user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
                     await db.insert_groups_members(member_id=user_id, group_id=group_info_fetch[0][0],
                                                    role=int(data['role']))
