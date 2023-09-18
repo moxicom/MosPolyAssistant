@@ -10,7 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import bot
-from keyboards import main_keyboards as k
+from keyboards import main_keyboards as keyboards
 from Db import db_functions as db
 from handlers import general
 
@@ -82,7 +82,7 @@ async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
         await callback_query.answer()
         role = await general.get_role_by_tg_id(callback_query.from_user.id)
         if role == 2:
-            await bot.send_message(callback_query.from_user.id, "Вот что ты можешь сделать", reply_markup=k.admin_functions_mkp)
+            await bot.send_message(callback_query.from_user.id, "Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
         elif role == 0:
             await bot.send_message(callback_query.from_user.id, "Вот что ты можешь сделать")
         else:
