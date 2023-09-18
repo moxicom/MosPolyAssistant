@@ -1,6 +1,6 @@
 from sqlalchemy.ext import asyncio as asyncio_ext
 from sqlalchemy.sql import select
-from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, and_
+from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, BIGINT, and_
 from sqlalchemy.orm import declarative_base as base
 import asyncio
 from sqlalchemy import update
@@ -13,7 +13,7 @@ from sqlalchemy import update
 # )
 
 engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
+    "postgresql+asyncpg://postgres:LichCode@localhost:5432/postgres",
     echo=False,
     future=True
 )
@@ -36,27 +36,27 @@ async def createTable():
 
 
 ########################### users #######################
-async def insert_users(name: VARCHAR, group_id: int, tg_id: int):
+async def insert_users(name: VARCHAR, group_id: int, tg_id: BIGINT):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR),
                       Column('group_id', Integer),
-                      Column('tg_id', Integer))
+                      Column('tg_id', BIGINT))
         insertStmt = table.insert().values(name=name, group_id=group_id, tg_id=tg_id)
         await conn.execute(insertStmt)
         await conn.commit()
 
 
-async def fetch_users(tg_id: int):
+async def fetch_users(tg_id: BIGINT):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR),
                       Column('group_id', Integer),
-                      Column('tg_id', Integer))
+                      Column('tg_id', BIGINT))
         selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
@@ -71,7 +71,7 @@ async def fetch_users_in_group(group_id: int):
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR),
                       Column('group_id', Integer),
-                      Column('tg_id', Integer))
+                      Column('tg_id', BIGINT))
         selectStmt = select(table).where(table.c.group_id == group_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
@@ -79,14 +79,14 @@ async def fetch_users_in_group(group_id: int):
         return users
 
 
-async def delete_users(tg_id: int):
+async def delete_users(tg_id: BIGINT):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR),
                       Column('group_id', Integer),
-                      Column('tg_id', Integer))
+                      Column('tg_id', BIGINT))
         deleteStmt = table.delete().where(table.c.tg_id == tg_id)
         await conn.execute(deleteStmt)
         await conn.commit()
