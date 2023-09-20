@@ -28,7 +28,7 @@ def cancel_button_markup():
 async def change_password(callback_query: types.CallbackQuery, state: FSMContext):
     try:
         await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(callback_query.from_user.id, "Введите пароль:", reply_markup=cancel_button_markup())
+        await bot.send_message(callback_query.from_user.id, "Введите новый пароль:", reply_markup=cancel_button_markup())
         await MyStates.FIRST_WORD.set()
     except Exception as ex:
         await bot.answer_callback_query(callback_query.from_user.id, text="Ошибка" + str(ex))
@@ -45,7 +45,7 @@ async def process_first_word(message: types.Message, state: FSMContext):
     try:
         async with state.proxy() as data:
             data['first_word'] = message.text
-        await message.reply("Введите пароль повторно:", reply_markup=cancel_button_markup())
+        await message.reply("Введите новый пароль повторно:", reply_markup=cancel_button_markup())
         await MyStates.SECOND_WORD.set()
     except Exception as ex:
         await message.reply('Ошибка ' + str(ex))
