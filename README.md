@@ -23,6 +23,6 @@ MOSPOLYASSISTANT is a telegram bot that allows you to:
 ## Available commands 
 - /reg (Availability - all) - Starting user registration.
 - /start (Availability - all) - beginning of interaction with the bot. Greeting the user, in case of administrator rights, launching the admin keyboard
-- /help (Availability - all) - Showing all available functionality. Depends on the user's rights. (🔴Currently not implemented)
+- /help (Availability - all) - Showing all available functionality. Depends on the user's rights. (🔴Currently work only for admin)
 - /get_tags (Availability - all) - Showing all existing tags.
 - /get_message (Availability - all) - Search for a message by id.
