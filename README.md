@@ -15,7 +15,7 @@ MOSPOLYASSISTANT is a telegram bot that allows you to:
 ## TECH
 ##### python
 - aiogram ```v2.25.1```
-- sqlalchemy (async for PostgreSQL)
+- sqlalchemy (async for PostgreSQL) ``` 2.0.21 ```
 - asyncpg ```v0.28.0```
 - asyncio
  
