@@ -1,10 +1,11 @@
 import logging
 import asyncio
 from handlers import start_interaction, register, client
-from keyboards.admin import list_of_group, change_password, tags
+from handlers.admin import tags
 from config import bot, dp
+from handlers.admin import change_password, list_of_group
 
-token = '5555273889:AAFh3yk1-P5brLJQ79Ip5_JbDydkJhAGUpc'
+token = '6024378385:AAFOl2OEJNzvu7uLK8p0CC2uUJlXRtTYSfQ'
 # token = '5983840222:AAH5nLq35iCpMvSRBsD6v8p5TqhL_kmLSXU'
 
 logging.basicConfig(level=logging.INFO)
