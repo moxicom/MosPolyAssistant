@@ -16,6 +16,12 @@ role_chosing_mkp.row(button_cancel)
 
 
 ######################## ADMIN BUTTONS ########################
+
+### SHOULD ADD `check all tags` button, 
+### show like [Tag] For tags and [Msg] for messages
+
+### SHOULD ADD `delete group` button
+
 admin_functions_mkp = InlineKeyboardMarkup(row_width=2)
 change_password = InlineKeyboardButton("Изменить пароль", callback_data="change_password")
 list_of_group = InlineKeyboardButton("Список группы", callback_data="list_of_group")

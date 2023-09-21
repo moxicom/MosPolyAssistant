@@ -1,21 +1,29 @@
 import logging
 import asyncio
 from handlers import start_interaction, register, client
-from handlers.admin import tags
-from config import bot, dp
-from handlers.admin import change_password, list_of_group
 
-token = '6024378385:AAFOl2OEJNzvu7uLK8p0CC2uUJlXRtTYSfQ'
-# token = '5983840222:AAH5nLq35iCpMvSRBsD6v8p5TqhL_kmLSXU'
+from config import bot, dp
+from handlers.admin import change_password, list_of_group, basics, tags
+
+token = '<token>'
 
 logging.basicConfig(level=logging.INFO)
 
+### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)
 register.register_handlers(dp)
+###
+
+### ADMIN HANDLERS
+basics.admin_basic_handlers(dp)
 change_password.change_password_handlers(dp)
 list_of_group.list_of_group_handlers(dp)
 tags.tags_handlers(dp)
+###
+
+### CLIENT HANDLERS
 client.client_handlers(dp)
+###
 
 
 async def main():

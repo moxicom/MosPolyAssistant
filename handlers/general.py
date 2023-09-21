@@ -23,7 +23,6 @@ async def get_group_id_by_tg_id(tg_id: int):
         print('EXCEPTION: ' + str(ex))
 
 
-
 async def get_role_by_tg_id(tg_id: int):
     try:
         fetch_user = await db.fetch_users(tg_id=tg_id)

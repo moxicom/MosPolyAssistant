@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
@@ -9,36 +10,61 @@ from handlers import general
 from Db import db_functions as db
 
 
+logger = logging.getLogger('[LOG]')
+
+
 class States(StatesGroup):
-    MESSAGE = State()
-    CHOOSE_ACTION = State()
-    EXISTING_TAG = State()
-    NEW_TAG = State()
-    CONFIRM = State()
+    MESSAGE = State()           # getting a new message's text from user
+    CHOOSE_ACTION = State()     # get the result of selecting a custom tag
+    EXISTING_TAG = State()      #
+    NEW_TAG = State()           #
+    CONFIRM = State()           #
 
 
 async def start(callback_query: types.CallbackQuery, state: FSMContext):
+    """Starts message adding process.Ask user for text of message"""
     markup = ReplyKeyboardRemove()
+    logger.info(" STARTED ADDING NEW MESSAGE")
     await state.finish()
+    # use answer_callback_query to stop button infinite load in Telegram client
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:", reply_markup=markup)
+
+    try:
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:", reply_markup=markup)
+    except Exception as ex:
+        print("\t[LOG] SENDING MESSAGE ERROR")
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам")
+
     await States.MESSAGE.set()
 
 
 async def process_message(message: types.Message, state: FSMContext):
+    """Updates the data of state: `user_text=message.text`. Await a `confirm_message` func."""
     # Save the user's message into the state
-    await state.update_data(user_text=message.text)
-    # Call the confirm_message function to validate the message
-    await confirm_message(message, state)
+    try:
+        await state.update_data(user_text=message.text)
+        logger.info("state updated: user_text set")
+    except Exception as ex:
+        logger.debug("ERROR TO UPDATE state data")
+
+    try:
+        # Call the confirm_message function to validate the message
+        await confirm_message(message, state)
+    except Exception as ex:
+        await message.answer("Внутренняя ошибка")
+        await state.finish()
 
 
 async def confirm_message(message: types.Message, state: FSMContext):
+    
     async with state.proxy() as data:
         user_text = data['user_text']
+
         markup = InlineKeyboardMarkup(row_width=2)
-        markup.add(InlineKeyboardButton("Да", callback_data="confirm_msg_yes"))
-        markup.add(InlineKeyboardButton("Нет", callback_data="confirm_msg_no"))
+        markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_msg_yes"))
+        markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_msg_no"))
         markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
+
         await message.reply("Ваше сообщение корректно?", reply_markup=markup)
         await States.CONFIRM.set()
 
@@ -60,8 +86,8 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
         user_text = data['user_text']
         tag = data['tag']
         markup = InlineKeyboardMarkup(row_width=2)
-        markup.add(InlineKeyboardButton("Да", callback_data="confirm_full_yes"))
-        markup.add(InlineKeyboardButton("Нет", callback_data="confirm_full_no"))
+        markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_full_yes"))
+        markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_full_no"))
         markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
         await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
                             reply_markup=markup)
@@ -183,18 +209,27 @@ async def process_callback_actual_existing_tag(callback_query: types.CallbackQue
 
 
 def tags_handlers(dp: Dispatcher):
-    dp.register_callback_query_handler(start, lambda c: c.data == "write_message", state="*")
     dp.register_message_handler(process_message, state=States.MESSAGE)
+    
+    dp.register_callback_query_handler(start, lambda c: c.data == "write_message", state="*")
     dp.register_callback_query_handler(process_callback_existing_tag, lambda c: c.data == "existing_tag",
                                        state=States.CHOOSE_ACTION)
     dp.register_callback_query_handler(process_callback_new_tag, lambda c: c.data == "new_tag",
                                        state=[States.CHOOSE_ACTION, States.EXISTING_TAG])
     dp.register_message_handler(add_new_tag, state=States.NEW_TAG)
+
     dp.register_callback_query_handler(process_callback_actual_existing_tag, state=States.EXISTING_TAG)
-    dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "confirm_full_yes", state=States.CONFIRM)
-    dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "confirm_full_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "admin-tag-confirm_full_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "admin-tag-confirm_full_no", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_tag_yes, lambda c: c.data == "confirm_tag_yes", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_tag_no, lambda c: c.data == "confirm_tag_no", state=States.CONFIRM)
-    dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "confirm_msg_yes", state=States.CONFIRM)
-    dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "confirm_msg_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "admin-tag-confirm_msg_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "admin-tag-confirm_msg_no", state=States.CONFIRM)
     dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel", state="*")  # Add this line
+
+# CALLBACKS FROM MAIN KEYBOARDS:
+# change_password, list_of_group, write_message
+# 
+# 
+# 
+# 

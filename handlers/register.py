@@ -154,7 +154,8 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
 
             print('users_password_repeating finish\n', data['name'], data['password'])
 
-            await bot.send_message(chat_id=message.chat.id, text="Выбери что ты хочешь сделать",
+            # sending a message to created user with `admin_functions_mkp` keyboard
+            await bot.send_message(chat_id=message.chat.id, text="Выбери, что ты хочешь сделать",
                                    reply_markup=keyboards.admin_functions_mkp)
             await state.finish()
         else:
