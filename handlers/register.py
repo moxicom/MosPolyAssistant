@@ -44,12 +44,12 @@ async def user_name_set(message: types.Message, state: FSMContext):
     And checking for length and compliance with existing commands.
     """
     if len(message.text) > 255 :
-        await message.reply("Данное имя слишком длинное (больше 255 символов), введите имя покороче(Пример: Иванов И).")
+        await message.reply("Данное имя слишком длинное (больше 255 символов), введите корректное имя (Пример: Иванов И).")
         await FSMregister.name.set()    
         return
 
     if message.text[0] == "/":
-        await message.reply("Ваше имя не должно начинаться с /, введите корректное имя(Пример: Иванов И).")
+        await message.reply("Ваше имя не должно начинаться с /, введите корректное имя (Пример: Иванов И).")
         await FSMregister.name.set()    
         return
     
@@ -93,12 +93,12 @@ async def users_group_set(message: types.Message, state: FSMContext):  # FSM gro
         if data['role'] == '0':
             try:
                 fetch = await db.fetch_groups_info(group_name=message.text)
-                if (len(fetch) != 0):
+                if len(fetch) != 0:
                     data['group'] = message.text
-                    await message.reply('Группа найдена, введите пароль', reply_markup=keyboards.reg_move_mkp)
+                    await message.reply('Группа найдена, введите пароль.', reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
                 else:
-                    await message.reply('Группа с таким именем не найдена, введите еще раз',
+                    await message.reply('Группа с таким именем не найдена, введите еще раз.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.group.set()
             except Exception as ex:
@@ -107,13 +107,22 @@ async def users_group_set(message: types.Message, state: FSMContext):  # FSM gro
         elif data['role'] == '2':
             try:
                 fetch = await db.fetch_groups_info(group_name=message.text)
-                if len(fetch) == 0:
+                if len(message.text) > 255:
+                    await message.reply("Данное имя слишком длинное (больше 255 символов), введите корректное название.")
+                    await FSMregister.group.set()    
+                    return 
+                elif message.text[0] == "/":
+                    await message.reply("Название группы не должно начинаться с /, введите корректное название.")
+                    await FSMregister.group.set()    
+                    return
+                elif len(fetch) == 0:
                     data['group'] = message.text
-                    await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы',
+                    await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
+                
                 else:
-                    await message.reply('Группа с таким именем уже существует, введите другое название',
+                    await message.reply('Группа с таким именем уже существует, введите другое название.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.group.set()
             except Exception as ex:
