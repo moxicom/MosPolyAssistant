@@ -27,6 +27,10 @@ async def cancel_reg_btn(callback: types.CallbackQuery, state: FSMContext):
 
 
 async def register_start(message: types.Message):
+    """
+    Checking the existence of a user in the database.
+    In case of unexistence, the registration process begins.
+    """
     exist = await general.check_user_existence(message.from_user.id)
     if not exist:
         await message.reply("Отлично, как вас зовут? (Пример: Иванов И)")
@@ -38,7 +42,7 @@ async def register_start(message: types.Message):
 
 async def user_name_set(message: types.Message, state: FSMContext):
     """
-    Selecting and entering the user name in the database.
+    User's choice of name.
     And checking for length and compliance with existing commands.
     """
     if len(message.text) > 255 :
@@ -86,6 +90,10 @@ async def user_role_regular_set(callback: types.CallbackQuery, state: FSMContext
 
 
 async def users_group_set(message: types.Message, state: FSMContext):  # FSM group
+    """
+    Splitting the path to join a group or create it. 
+    Depends on the user role.
+    """
     print("group set started...")
     async with state.proxy() as data:
         if data['role'] == '0':
@@ -135,6 +143,7 @@ async def users_password_check(message: types.Message, state: FSMContext):  # FS
                 print('---users_password_check (role 0)--- \n', group_info_fetch)
                 if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
                     await message.answer('Пароль верный')
+                    # Saving information in the database about new user
                     await message.answer(f'{data["name"]} {data["group"]}')
                     await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
                     user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
@@ -161,6 +170,8 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
         print("---password repeating check started....---")
         if data['password'] == message.text:
             await message.reply('Пароли совпадают.\nНовая группа успешно создана')
+
+            # Saving information in the database about new group and user
             data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
             await db.insert_groups_info(group_name=data['group'], password=data['password'])
 
