@@ -1,5 +1,3 @@
-import asyncio
-
 import hashlib
 
 from aiogram import types, Dispatcher
@@ -56,8 +54,8 @@ async def user_name_set(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name'] = message.text
 
-    await bot.send_message(message.from_user.id, "Отлично, укажите вашу роль.\n\t При выборе роли старосты, вы перейдете к созданию новой группы. \
-                        \n\t При выборе роли участника, вы присоединитесь к существующей.", reply_markup=keyboards.role_chosing_mkp)
+    await bot.send_message(message.from_user.id, "Отлично, укажите вашу роль.\n\t ➡️При выборе роли старосты, вы перейдете к созданию новой группы. \
+                        \n\t ➡️При выборе роли участника, вы присоединитесь к существующей.", reply_markup=keyboards.role_chosing_mkp)
     await FSMregister.next()
 
 
@@ -120,7 +118,6 @@ async def users_group_set(message: types.Message, state: FSMContext):  # FSM gro
                     await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
-                
                 else:
                     await message.reply('Группа с таким именем уже существует, введите другое название.',
                                         reply_markup=keyboards.reg_move_mkp)
@@ -187,13 +184,10 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
 def register_handlers(dp: Dispatcher):
     dp.register_message_handler(register_start, commands=['reg'])
     dp.register_message_handler(user_name_set, state=FSMregister.name, content_types=types.ContentTypes.TEXT)
-    # dp.register_callback_query_handler(user_role_set)
-    dp.register_callback_query_handler(text='btn_regular_user', callback=user_role_regular_set, state=FSMregister.role)
-    dp.register_callback_query_handler(text='btn_owner', callback=user_role_owner_set, state=FSMregister.role)
     dp.register_message_handler(users_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
     dp.register_message_handler(users_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_password_repeating, state=FSMregister.password_repeat,
-                                content_types=types.ContentTypes.TEXT)
-
+    dp.register_message_handler(users_password_repeating, state=FSMregister.password_repeat,  content_types=types.ContentTypes.TEXT)
+    
+    dp.register_callback_query_handler(text='btn_regular_user', callback=user_role_regular_set, state=FSMregister.role)
+    dp.register_callback_query_handler(text='btn_owner', callback=user_role_owner_set, state=FSMregister.role)
     dp.register_callback_query_handler(text='btn_cancel', callback=cancel_reg_btn, state='*')
-    # dp.register_callback_query_handler(text='btn_back', callback=back_reg_btn, state='*')
