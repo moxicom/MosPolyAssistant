@@ -89,7 +89,7 @@ async def user_role_regular_set(callback: types.CallbackQuery, state: FSMContext
     await FSMregister.next()
 
 
-async def users_group_set(message: types.Message, state: FSMContext):  # FSM group
+async def user_group_set(message: types.Message, state: FSMContext):  # FSM group
     """
     Splitting the path to join a group or create it. 
     Depends on the user role.
@@ -135,12 +135,12 @@ async def users_group_set(message: types.Message, state: FSMContext):  # FSM gro
                 await state.finish()
 
 
-async def users_password_check(message: types.Message, state: FSMContext):  # FSM password
+async def user_password_check(message: types.Message, state: FSMContext):  # FSM password
     async with state.proxy() as data:
         if data['role'] == '0':
             try:
                 group_info_fetch = await db.fetch_groups_info(group_name=data['group'])
-                print('---users_password_check (role 0)--- \n', group_info_fetch)
+                print('---user_password_check (role 0)--- \n', group_info_fetch)
                 if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
                     await message.answer('Пароль верный')
                     # Saving information in the database about new user
@@ -165,7 +165,7 @@ async def users_password_check(message: types.Message, state: FSMContext):  # FS
                 await state.finish()
 
 
-async def users_password_repeating(message: types.Message, state: FSMContext):
+async def user_password_repeating(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         print("---password repeating check started....---")
         if data['password'] == message.text:
@@ -181,7 +181,7 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
             user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
             await db.insert_groups_members(member_id=user_id, group_id=group_id, role=int(data['role']))
 
-            print('users_password_repeating finish\n', data['name'], data['password'])
+            print('user_password_repeating finish\n', data['name'], data['password'])
 
             # sending a message to created user with `admin_functions_mkp` keyboard
             await bot.send_message(chat_id=message.chat.id, text="Выбери, что ты хочешь сделать",
@@ -195,9 +195,9 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
 def register_handlers(dp: Dispatcher):
     dp.register_message_handler(register_start, commands=['reg'])
     dp.register_message_handler(user_name_set, state=FSMregister.name, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_password_repeating, state=FSMregister.password_repeat,  content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(user_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(user_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(user_password_repeating, state=FSMregister.password_repeat,  content_types=types.ContentTypes.TEXT)
     
     dp.register_callback_query_handler(text='btn_regular_user', callback=user_role_regular_set, state=FSMregister.role)
     dp.register_callback_query_handler(text='btn_owner', callback=user_role_owner_set, state=FSMregister.role)
