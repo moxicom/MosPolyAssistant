@@ -7,7 +7,21 @@ from handlers.admin import change_password, list_of_group, basics, tags
 
 token = '<token>'
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s [%(levelname)s]: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+# Create a file handler
+file_handler = logging.FileHandler('MosPolyAssistant.log', mode='w')
+file_handler.setLevel(logging.INFO)
+
+# Create a formatter and set it for the handler
+formatter = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+file_handler.setFormatter(formatter)
+
+# Get root handler and set handler for it
+root_logger = logging.getLogger()
+root_logger.addHandler(file_handler)
 
 ### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)
