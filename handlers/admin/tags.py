@@ -42,10 +42,15 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
         return
 
     try:
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:",
-                               reply_markup=InlineKeyboardMarkup()
-                               .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
-                               )
+        # await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:",
+        #                        reply_markup=InlineKeyboardMarkup()
+        #                        .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+        #                        )
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                                    text="Введите ваше сообщение:",
+                                    reply_markup=InlineKeyboardMarkup()
+                                    .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+                                    )
     except Exception as ex:
         print("\t[LOG] SENDING MESSAGE ERROR")
         await bot.send_message(chat_id=callback_query.from_user.id, text=internal_error_msg)
@@ -99,7 +104,8 @@ async def confirm_message(message: types.Message, state: FSMContext):
 
 async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
-    await ask_for_tag(callback_query.message, state)
+    # await ask_for_tag(callback_query.message, state)
+    await ask_for_tag(callback_query, state)
     # !!!! MAKE THERE `ПОСМОТРЕТЬ ВСЕ ТЕГИ BTN`
 
 
@@ -115,14 +121,19 @@ async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext)
         await state.finish()
 
 
-async def ask_for_tag(message: types.Message, state: FSMContext):
+# async def ask_for_tag(message: types.Message, state: FSMContext):
+async def ask_for_tag(callback_query: types.CallbackQuery, state: FSMContext):
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(InlineKeyboardButton("Существующий тег", callback_data="admin-tag-select-existing_tag"))
     markup.add(InlineKeyboardButton("Добавить новый тег", 
     callback_data="admin-tag-create-new-tag"))
     markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
 
-    await message.reply("Выберете тег", reply_markup=markup)
+    # await message.reply("Выберете тег", reply_markup=markup)
+    await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                            text="Выберете тег",
+                            reply_markup=markup
+                            )
     await States.CHOOSE_ACTION.set()
 
 
@@ -150,7 +161,11 @@ async def process_callback_existing_tag(callback_query: types.CallbackQuery, sta
 async def process_callback_new_tag(callback_query: types.CallbackQuery, state: FSMContext):
     try:
         await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите название новго тега:")
+        # await bot.send_message(chat_id=callback_query.from_user.id, text="Введите название нового тега:")
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                        text="Введите название нового тега",
+                        reply_markup=None
+                        )
         await States.NEW_TAG.set()
         logger.info("Asking user for a new tag")
     except Exception as ex:
