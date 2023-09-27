@@ -138,24 +138,31 @@ async def ask_for_tag(callback_query: types.CallbackQuery, state: FSMContext):
 
 
 async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    print('кнопка существующий тег')
+    logger.info("Adding existing tag")
     await bot.answer_callback_query(callback_query.id)
-    group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-    # !!!!!!!!!!!!!!!!!!!!!!!!!
-    existing_tags = await db.fetch_tags(group_id)
-    # !!!!!!!!!!!!!!!!!!!!!!!!!
-    if existing_tags:
-        markup = InlineKeyboardMarkup(row_width=2)
-        for tag in existing_tags:
-            markup.add(InlineKeyboardButton(tag, callback_data=f"tag_{tag}"))
-        markup.add(InlineKeyboardButton("Создать новый тег", callback_data='new_tag'))
-        await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
-                                    text="Выберите тег:", reply_markup=markup)
-        await States.EXISTING_TAG.set()
+    await bot.send_message(callback_query.message.chat.id, "Выберите существующий тег")
+    await invoke_tag_menu(callback_query, state, show_create_btn=True)
+    await States.EXISTING_TAG.set()
 
-    else:
-        await bot.answer_callback_query(callback_query.id, "Нет существующих тегов, пожалуйста, добавьте новый тег.",
-                                        show_alert=True)
+    # try:
+    #     existing_tags = await db.fetch_tags(group_id)
+    # except Exception as ex:
+    #     logger.warning("Error while fetching tags")
+    #     await state.finish()
+    #     return
+
+    # if existing_tags:
+    #     markup = InlineKeyboardMarkup(row_width=2)
+    #     for tag in existing_tags:
+    #         markup.add(InlineKeyboardButton(tag, callback_data=f"tag_{tag}"))
+    #     markup.add(InlineKeyboardButton("Создать новый тег", callback_data='new_tag'))
+    #     await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
+    #                                 text="Выберите тег:", reply_markup=markup)
+    #     await States.EXISTING_TAG.set()
+
+    # else:
+    #     await bot.answer_callback_query(callback_query.id, "Нет существующих тегов, пожалуйста, добавьте новый тег.",
+    #                                     show_alert=True)
 
 
 async def process_callback_new_tag(callback_query: types.CallbackQuery, state: FSMContext):
@@ -201,7 +208,7 @@ async def confirm_tag(message: types.Message, state: FSMContext):
         markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))
         
         try:
-            await message.reply(f"Выбранный тег: {tag}\n Тег корректен?", reply_markup=markup)
+            await message.reply(f"Выбранный тег: {tag}\nТег корректен?", reply_markup=markup)
         except Exception as ex:
             await message.answer("Внутренняя ошибка")
             await state.finish()
@@ -222,7 +229,7 @@ async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext)
     await ask_for_tag(callback_query.message, state)
 
 
-async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None):
+async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, show_create_btn = False):
     """callback data: `switch_to_tag:{tag_id}`; `submit_tag:{tag_id}`"""
 
     await callback_query.answer()
@@ -264,6 +271,9 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
 
     markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
 
+    # if show_create_btn == True:
+    #     markup.add(InlineKeyboardButton("Создать новый тег", callback_data="admin-tag-create-new-tag"))
+    
     #if there is no tags
     if len(tags) == 0:
         # await bot.send_message(callback_query.from_user.id, tags_text + 
@@ -289,10 +299,6 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
         await state.finish()
 
 
-async def up_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    pass
-
-
 async def confirm_tag_position(callback_query: types.CallbackQuery, state: FSMContext):
     """Updates data with `position_id`, if position is in root tag, `postion_id = -1`"""
     # `submit_tag`` cold be `Root` or {tag_id}
@@ -309,23 +315,41 @@ async def confirm_tag_position(callback_query: types.CallbackQuery, state: FSMCo
         await state.finish()
         return
     
+    current_state = await state.get_state()
+
+    if current_state is States.EXISTING_TAG:
+        logger.info("U are inside existing state, so tag_id=position_id:", current_state)
+    
     await confirm_full_message(callback_query.message, state)
 
 
 async def confirm_full_message(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         user_text = data['user_text']
-        tag = data['tag']
+        try:
+            tag = data['tag']
+            # tag is given
+        except Exception as ex:
+            # key tag is not given
+            # !!!!!!!!!!!!! ADD HERE A FEATURE TO GET IF I CHOSE AN EXISTING TAG
+            tag='admin-ExIsTinG-6260-tag'
+            await state.update_data(tag=tag)
+
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_full_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_full_no"))
         markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
 
         try:
-            await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
+            if tag != 'admin-ExIsTinG-6260-tag':
+                await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
+                            reply_markup=markup)
+            else:
+                await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}",
                             reply_markup=markup)
         except Exception as ex:
             await message.answer("Внутренняя ошибка")
+            logger.fatal(str(ex))
             await state.finish()
             return
 
@@ -349,17 +373,22 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
             position_id = None
         
         await bot.answer_callback_query(callback_query.id)
+        
+        # !!!!!!!!!!!!!!!!!!!!!!
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-
+        
         # Fetch all existing tags
         existing_tags = await db.fetch_tags(group_id=group_id)
+        # !!!!!!!!!!!!!!!!!!!!!!
+
         # Insert the new tag into the tags table
-        if tag not in existing_tags: # WTF IS THIS???? :)))
+        tag_id = position_id
+        if tag not in existing_tags and tag != 'admin-ExIsTinG-6260-tag':
             await db.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
-        tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
+            tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
         # Insert the message into the messages table
-        await db.insert_messages(group_id=group_id, title=user_text, text=user_text, tag_id=tag_id, images=None,
+        await db.insert_messages(group_id=group_id, title=user_text[:50], text=user_text, tag_id=tag_id, images=None,
                                  videos=None, files=None, created_at=datetime.now())
 
         await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено.")
@@ -383,6 +412,7 @@ async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
 
 
 async def process_callback_actual_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    logger.info("Inside process_callback_actual_existing_tag()")
     tag = callback_query.data[4:]
     await callback_query.answer(callback_query.id)
     await state.update_data(tag=tag)
@@ -401,7 +431,7 @@ def tags_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(process_callback_new_tag, lambda c: c.data == "admin-tag-create-new-tag",
                                        state=[States.CHOOSE_ACTION, States.EXISTING_TAG])
 
-    dp.register_callback_query_handler(process_callback_actual_existing_tag, state=States.EXISTING_TAG)
+    # dp.register_callback_query_handler(process_callback_actual_existing_tag, state=States.EXISTING_TAG)
     dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "admin-tag-confirm_full_yes", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "admin-tag-confirm_full_no", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_tag_yes, lambda c: c.data == "confirm_tag_yes", state=States.CONFIRM)

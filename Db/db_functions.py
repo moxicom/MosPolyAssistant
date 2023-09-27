@@ -206,6 +206,7 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
 
 ########################### tags ########################
 async def fetch_tags(group_id: int):
+    """Returns array of tags name"""
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
