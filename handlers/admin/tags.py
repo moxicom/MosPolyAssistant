@@ -30,7 +30,10 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
 
     try:
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Отмена", callback_data="cancel")))
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:",
+                               reply_markup=InlineKeyboardMarkup()
+                               .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+                               )
     except Exception as ex:
         print("\t[LOG] SENDING MESSAGE ERROR")
         await bot.send_message(chat_id=callback_query.from_user.id, text="Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам")
@@ -80,10 +83,84 @@ async def confirm_message(message: types.Message, state: FSMContext):
         await States.CONFIRM.set()
 
 
+async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await ask_for_tag(callback_query.message, state)
+    # !!!! MAKE THERE `ПОСМОТРЕТЬ ВСЕ ТЕГИ BTN`
+
+
+async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext):
+    """Asks user to retype new message"""
+    try:
+        await bot.answer_callback_query(callback_query.id)
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Пожалуйста, введите ваше сообщение снова.", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Отмена", callback_data="cancel")))
+        await States.MESSAGE.set()
+    except Exception as ex:
+        logger.warning(str(ex))
+        await bot.send_message(callback_query.from_user.id, "Ошибка на сервере. Попробуйте еще раз. При повторе ошибки обратитесь к администратору")
+        await state.finish()
+
+
+async def ask_for_tag(message: types.Message, state: FSMContext):
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(InlineKeyboardButton("Существующий тег", callback_data="admin-tag-select-existing_tag"))
+    markup.add(InlineKeyboardButton("Добавить новый тег", 
+    callback_data="admin-tag-create-new-tag"))
+    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+
+    await message.reply("Выберете тег", reply_markup=markup)
+    await States.CHOOSE_ACTION.set()
+
+
+async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    print('кнопка существующий тег')
+    await bot.answer_callback_query(callback_query.id)
+    group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+    # !!!!!!!!!!!!!!!!!!!!!!!!!
+    existing_tags = await db.fetch_tags(group_id)
+    # !!!!!!!!!!!!!!!!!!!!!!!!!
+    if existing_tags:
+        markup = InlineKeyboardMarkup(row_width=2)
+        for tag in existing_tags:
+            markup.add(InlineKeyboardButton(tag, callback_data=f"tag_{tag}"))
+        markup.add(InlineKeyboardButton("Создать новый тег", callback_data='new_tag'))
+        await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
+                                    text="Выберите тег:", reply_markup=markup)
+        await States.EXISTING_TAG.set()
+
+    else:
+        await bot.answer_callback_query(callback_query.id, "Нет существующих тегов, пожалуйста, добавьте новый тег.",
+                                        show_alert=True)
+
+
+async def process_callback_new_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    try:
+        await bot.answer_callback_query(callback_query.id)
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите название новго тега:")
+        await States.NEW_TAG.set()
+        logger.info("Asking user for a new tag")
+    except Exception as ex:
+        await bot.send_message(callback_query.from_user.id, "Непредвиденная ошибка")
+        await state.finish()
+        logger.warning("Arror at tag creating process: }" + str(ex))
+
+
+async def add_new_tag(message: types.Message, state: FSMContext):
+    """Gets a `message.text` as a new tag and updates state data `tag=message.text`"""
+    try:
+        new_tag = message.text
+        await state.update_data(tag=new_tag)
+        await confirm_tag(message, state)
+        logger.info("New tag confirmed")
+    except Exception as ex:
+        await state.finish()
+        await message.answer("Ощибка на сервере")
+        logger.info("Cannot confirm a new tag")
+
+
 async def confirm_tag(message: types.Message, state: FSMContext):
     """
-    Updates state with  `user_text`
-    .Invokes when user send new tag name
+    Updates state with  `user_text`. Invokes when user send new tag name
     """
     async with state.proxy() as data:
         user_text = data['user_text']
@@ -102,6 +179,16 @@ async def confirm_tag(message: types.Message, state: FSMContext):
             return
     
         await States.CONFIRM.set()
+
+
+async def confirm_tag_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await confirm_full_message(callback_query.message, state)
+
+
+async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    await ask_for_tag(callback_query.message, state)
 
 
 async def confirm_full_message(message: types.Message, state: FSMContext):
@@ -161,89 +248,6 @@ async def confirm_full_no(callback_query: types.CallbackQuery, state: FSMContext
     await bot.answer_callback_query(callback_query.id)
     await bot.send_message(chat_id=callback_query.from_user.id, text="Начинаем заново.")
     await start(callback_query, state)
-
-
-async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.answer_callback_query(callback_query.id)
-    await ask_for_tag(callback_query.message, state)
-    # !!!! MAKE THERE `ПОСМОТРЕТЬ ВСЕ ТЕГИ BTN`
-
-
-async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext):
-    """Asks user to retype new message"""
-    try:
-        await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Пожалуйста, введите ваше сообщение снова.", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Отмена", callback_data="cancel")))
-        await States.MESSAGE.set()
-    except Exception as ex:
-        logger.warning(str(ex))
-        await bot.send_message(callback_query.from_user.id, "Ошибка на сервере. Попробуйте еще раз. При повторе ошибки обратитесь к администратору")
-        await state.finish()
-
-
-async def confirm_tag_yes(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.answer_callback_query(callback_query.id)
-    await confirm_full_message(callback_query.message, state)
-
-
-async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.answer_callback_query(callback_query.id)
-    await ask_for_tag(callback_query.message, state)
-
-
-async def ask_for_tag(message: types.Message, state: FSMContext):
-    markup = InlineKeyboardMarkup(row_width=2)
-    markup.add(InlineKeyboardButton("Существующий тег", callback_data="admin-tag-select-existing_tag"))
-    markup.add(InlineKeyboardButton("Добавить новый тег", 
-    callback_data="admin-tag-create-new-tag"))
-    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
-
-    await message.reply("Выберете тег", reply_markup=markup)
-    await States.CHOOSE_ACTION.set()
-
-
-async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    print('кнопка существующий тег')
-    await bot.answer_callback_query(callback_query.id)
-    group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-    existing_tags = await db.fetch_tags(group_id)
-    if existing_tags:
-        markup = InlineKeyboardMarkup(row_width=2)
-        for tag in existing_tags:
-            markup.add(InlineKeyboardButton(tag, callback_data=f"tag_{tag}"))
-        markup.add(InlineKeyboardButton("Создать новый тег", callback_data='new_tag'))
-        await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
-                                    text="Выберите тег:", reply_markup=markup)
-        await States.EXISTING_TAG.set()
-
-    else:
-        await bot.answer_callback_query(callback_query.id, "Нет существующих тегов, пожалуйста, добавьте новый тег.",
-                                        show_alert=True)
-
-
-async def process_callback_new_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    try:
-        await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Введите название новго тега:")
-        await States.NEW_TAG.set()
-        logger.info("Asking user for a new tag")
-    except Exception as ex:
-        await bot.send_message(callback_query.from_user.id, "Непредвиденная ошибка")
-        await state.finish()
-        logger.warning("Arror at tag creating process: }" + str(ex))
-
-
-async def add_new_tag(message: types.Message, state: FSMContext):
-    """Gets a `message.text` as a new tag and updates state data `tag=message.text`"""
-    try:
-        new_tag = message.text
-        await state.update_data(tag=new_tag)
-        await confirm_tag(message, state)
-        logger.info("New tag confirmed")
-    except Exception as ex:
-        await state.finish()
-        await message.answer("Ощибка на сервере")
-        logger.info("Cannot confirm a new tag")
 
 
 async def cancel(callback_query: types.CallbackQuery, state: FSMContext):

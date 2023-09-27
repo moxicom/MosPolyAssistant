@@ -18,7 +18,7 @@ async def send_all_basic_admin_commands(message: types.Message, state: FSMContex
     
     exist = await general.check_user_existence(user.id)
     if not exist:
-        await("Вы не присоединены ни к одной группе")
+        await message.reply("Вы не присоединены ни к одной группе")
         return
     role = await general.get_role_by_tg_id(user.id)
     if role == 2:
