@@ -214,7 +214,11 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
 
     # get all child tags
     if callback_query.data.startswith("switch_to_tag"):
-        tag_id = int(callback_query.data.split(":")[-1])
+        data = callback_query.data.split(":")[-1]
+        if data == "None" : 
+            tag_id = None
+        else:
+             tag_id = int(data)
     try:
         async with state.proxy() as data:
             group_id = data.get("group_id")
@@ -239,31 +243,58 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
             logger.warning("Can not get current tag by id")
             await state.finish()
             return
-        tags_text = f"Сейчас вы находитесь в {current_tag[2]}.\n"
+        tags_text = f"Сейчас вы находитесь в теге '{current_tag[2]}'.\n"
         markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:{current_tag[0]}"))
+        markup.add(InlineKeyboardButton("< К родительскому тегу", callback_data=f"switch_to_tag:{current_tag[-1]}"))
 
     markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
-    
 
     #if there is no tags
     if len(tags) == 0:
-        await bot.send_message(callback_query.from_user.id, tags_text + 
-                         "В данный момент здесь нет тегов",
-                         reply_markup=markup)
+        # await bot.send_message(callback_query.from_user.id, tags_text + 
+                        #  "В данный момент здесь нет тегов",
+                        #  reply_markup=markup)
+        await bot.edit_message_text(tags_text + "В данный момент здесь нет тегов",
+                                    chat_id=callback_query.message.chat.id,
+                                    message_id=callback_query.message.message_id, 
+                                    reply_markup=markup)
         return
     
-
     for tag in tags:
         tags_text += f"\t> {tag[2]}\n"
-        markup.add(InlineKeyboardButton(tag[2], callback_data=f"switch_to_tag:{tag[0]}"))
+        markup.add(InlineKeyboardButton("> "+tag[2], callback_data=f"switch_to_tag:{tag[0]}"))
 
     try:
-        await bot.send_message(callback_query.from_user.id, tags_text, reply_markup=markup)
+        # await bot.send_message(callback_query.from_user.id, tags_text, reply_markup=markup)
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, text=tags_text, reply_markup=markup)
         logger.info("root tags were sent to user")
     except Exception as ex:
         logger.warning("Can not send a message to user with root tags")
         await bot.send_message(callback_query.from_user.id, internal_error_msg)
         await state.finish()
+
+
+async def up_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    pass
+
+
+async def confirm_tag_position(callback_query: types.CallbackQuery, state: FSMContext):
+    """Updates data with `position_id`, if position is in root tag, `postion_id = -1`"""
+    # `submit_tag`` cold be `Root` or {tag_id}
+    await callback_query.answer()
+    data = callback_query.data.split(":")[-1]
+    try:
+        if data == "Root":
+            position_id = -1
+        else:
+            position_id = int(data)
+        await state.update_data(position_id=position_id)
+    except Exception as ex:
+        logger.warning("Error to parse position_id")
+        await state.finish()
+        return
+    
+    await confirm_full_message(callback_query.message, state)
 
 
 async def confirm_full_message(message: types.Message, state: FSMContext):
@@ -297,14 +328,19 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
         user_text = data['user_text']
         # this is a tag text (description)
         tag = data['tag']
+        position_id = data['position_id']
+
+        if position_id == -1:
+            position_id = None
+        
         await bot.answer_callback_query(callback_query.id)
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
 
         # Fetch all existing tags
         existing_tags = await db.fetch_tags(group_id=group_id)
         # Insert the new tag into the tags table
-        if tag not in existing_tags:
-            await db.insert_tags(group_id=group_id, name=tag, parent_id=None)
+        if tag not in existing_tags: # WTF IS THIS???? :)))
+            await db.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
         tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
         # Insert the message into the messages table
@@ -362,6 +398,7 @@ def tags_handlers(dp: Dispatcher):
 
     # tags hierarchy
     dp.register_callback_query_handler(invoke_tag_menu, lambda c: c.data.startswith("switch_to_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
+    dp.register_callback_query_handler(confirm_tag_position, lambda c: c.data.startswith("submit_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
 
     dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel", state="*")  
 
@@ -370,5 +407,8 @@ def tags_handlers(dp: Dispatcher):
 
 # 
 # STATES PARAMS:
-# 
-# 
+# group_id - start()
+# user_text - process_message()
+# tag - new tag & existing tag funcs (text of the tag)
+# position_id - confirm_tag_position() (IF ROOT = -1)
+# admin_tag_menu_msg_id_to_edit invoke_tag_menu()
