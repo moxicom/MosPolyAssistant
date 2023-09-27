@@ -12,6 +12,8 @@ from Db import db_functions as db
 
 logger = logging.getLogger('[LOG]')
 
+internal_error_msg = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
+
 
 class States(StatesGroup):
     MESSAGE = State()           # getting a new message's text from user
@@ -30,13 +32,23 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
 
     try:
+        group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+        await state.update_data(group_id = group_id)
+        logger.info("Updated data with `group_id`")
+    except Exception as ex:
+        await bot.send_message(callback_query.from_user.id, internal_error_msg)
+        logger.warning("Update group_id state error")
+        await state.finish()
+        return
+
+    try:
         await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:",
                                reply_markup=InlineKeyboardMarkup()
                                .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
                                )
     except Exception as ex:
         print("\t[LOG] SENDING MESSAGE ERROR")
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам")
+        await bot.send_message(chat_id=callback_query.from_user.id, text=internal_error_msg)
         logger.warning(f"start func exception: {ex}")
         await state.finish()
         return
@@ -52,6 +64,7 @@ async def process_message(message: types.Message, state: FSMContext):
         logger.info("state updated: user_text set")
     except Exception as ex:
         logger.debug("ERROR TO UPDATE state data")
+        await message.answer(internal_error_msg)
         await state.finish()
         return
 
@@ -59,8 +72,9 @@ async def process_message(message: types.Message, state: FSMContext):
     try:
         await confirm_message(message, state)
     except Exception as ex:
-        await message.answer("Внутренняя ошибка")
+        await message.answer(internal_error_msg)
         await state.finish()
+        return
 
 
 async def confirm_message(message: types.Message, state: FSMContext):
@@ -183,12 +197,73 @@ async def confirm_tag(message: types.Message, state: FSMContext):
 
 async def confirm_tag_yes(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
-    await confirm_full_message(callback_query.message, state)
+    # await confirm_full_message(callback_query.message, state)
+    # Invoke a tag menu
+    await invoke_tag_menu(callback_query, state)
 
 
 async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
     await ask_for_tag(callback_query.message, state)
+
+
+async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None):
+    """callback data: `switch_to_tag:{tag_id}`; `submit_tag:{tag_id}`"""
+
+    await callback_query.answer()
+
+    # get all child tags
+    if callback_query.data.startswith("switch_to_tag"):
+        tag_id = int(callback_query.data.split(":")[-1])
+    try:
+        async with state.proxy() as data:
+            group_id = data.get("group_id")
+        tags = await db.get_tags_by_parent_id(tag_id, group_id)
+        logger.info("Got all tags")
+    except Exception as ex:
+        logger.warning("Can not get tags by parent_id")
+        await state.finish()
+        return
+
+    markup = InlineKeyboardMarkup()
+
+    # check if tag with id = tag_id is root tag
+    if tag_id == None:
+        tags_text = "Сейчас вы находитесь в корневом теге.\nВыберите тег из списка ниже:\n"
+        markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:Root"))
+    else:
+        try:
+            current_tag = await db.fetch_tag_by_id_group_id(tag_id, group_id)
+            logger.info("Got current tag")
+        except Exception as ex:
+            logger.warning("Can not get current tag by id")
+            await state.finish()
+            return
+        tags_text = f"Сейчас вы находитесь в {current_tag[2]}.\n"
+        markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:{current_tag[0]}"))
+
+    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+    
+
+    #if there is no tags
+    if len(tags) == 0:
+        await bot.send_message(callback_query.from_user.id, tags_text + 
+                         "В данный момент здесь нет тегов",
+                         reply_markup=markup)
+        return
+    
+
+    for tag in tags:
+        tags_text += f"\t> {tag[2]}\n"
+        markup.add(InlineKeyboardButton(tag[2], callback_data=f"switch_to_tag:{tag[0]}"))
+
+    try:
+        await bot.send_message(callback_query.from_user.id, tags_text, reply_markup=markup)
+        logger.info("root tags were sent to user")
+    except Exception as ex:
+        logger.warning("Can not send a message to user with root tags")
+        await bot.send_message(callback_query.from_user.id, internal_error_msg)
+        await state.finish()
 
 
 async def confirm_full_message(message: types.Message, state: FSMContext):
@@ -220,6 +295,7 @@ async def get_tg_ids_in_group(group_id: int, exclude_tg_id: int):
 async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         user_text = data['user_text']
+        # this is a tag text (description)
         tag = data['tag']
         await bot.answer_callback_query(callback_query.id)
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
@@ -262,6 +338,8 @@ async def process_callback_actual_existing_tag(callback_query: types.CallbackQue
     await confirm_tag(callback_query.message, state)
 
 
+
+
 def tags_handlers(dp: Dispatcher):
     dp.register_message_handler(process_message, state=States.MESSAGE)
     dp.register_message_handler(add_new_tag, state=States.NEW_TAG)
@@ -282,11 +360,15 @@ def tags_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "admin-tag-confirm_msg_yes", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "admin-tag-confirm_msg_no", state=States.CONFIRM) 
 
+    # tags hierarchy
+    dp.register_callback_query_handler(invoke_tag_menu, lambda c: c.data.startswith("switch_to_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
+
     dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel", state="*")  
 
 # CALLBACKS FROM MAIN KEYBOARDS:
 # change_password, list_of_group, write_message
 
 # 
+# STATES PARAMS:
 # 
 # 
