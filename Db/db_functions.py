@@ -202,7 +202,11 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
         return group_members
 
 
+
+
+########################### tags ########################
 async def fetch_tags(group_id: int):
+    """Returns array of tags name"""
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
@@ -214,7 +218,7 @@ async def fetch_tags(group_id: int):
         result = await conn.execute(selectStmt)
         rows = result.fetchall()
         return [row[2] for row in rows]
-
+    
 
 async def get_tag_id_by_name(tag_name: str, group_id: int):
     async with engine.connect() as conn:
@@ -233,9 +237,22 @@ async def get_tag_id_by_name(tag_name: str, group_id: int):
             return row[0]
         else:
             return None
+        
+        
+async def get_tags_by_parent_id(parent_id: int, group_id: int):
+    """Returns an array of tags that have (id, group_id, name, parent_id)"""
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('tags', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        select_stmt = select(table).where(and_(table.c.parent_id == parent_id, table.c.group_id == group_id))
+        result = await conn.execute(select_stmt)
+        tags = result.fetchall()
+        return tags
 
-
-########################### tags ########################
 async def insert_tags(group_id: int, name: str, parent_id: int):
     async with engine.begin() as conn:
         metadata = MetaData()
@@ -247,6 +264,50 @@ async def insert_tags(group_id: int, name: str, parent_id: int):
         insertStmt = table.insert().values(group_id=group_id, name=name, parent_id=parent_id)
         await conn.execute(insertStmt)
         await conn.commit()
+
+
+async def fetch_tag_by_id(current_tag_id: int):
+    """Returns a tag that have (id, group_id, name, parent_id)"""
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        selectStmt = select(table).where(table.c.id == current_tag_id)
+        result = await conn.execute(selectStmt)
+        tag = result.fetchone()
+        return tag
+
+
+async def fetch_tag_by_id_group_id(current_tag_id: int, group_id: int):
+    """Returns a tag that have (id, group_id, name, parent_id)"""
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        selectStmt = select(table).where(and_(table.c.id == current_tag_id, table.c.group_id == group_id))
+        result = await conn.execute(selectStmt)
+        tag = result.fetchone()
+        return tag
+
+
+async def fetch_tag_by_name(group_id: int, name: str):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        selectStmt = select(table).where(table.c.group_id == group_id, table.c.name == name)
+        result = await conn.execute(selectStmt)
+        tag = result.fetchone()
+        return tag
 
 
 ########################### messages ####################
@@ -272,34 +333,6 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
 
 
 ########################### CLIENT ###########################
-
-async def fetch_tag_by_id(current_tag_id: int):
-    async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
-                      Column('name', VARCHAR),
-                      Column('parent_id', Integer))
-        selectStmt = select(table).where(table.c.id == current_tag_id)
-        result = await conn.execute(selectStmt)
-        tag = result.fetchone()
-        return tag
-
-
-async def fetch_tag_by_name(group_id: int, name: str):
-    async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
-                      Column('name', VARCHAR),
-                      Column('parent_id', Integer))
-        selectStmt = select(table).where(table.c.group_id == group_id, table.c.name == name)
-        result = await conn.execute(selectStmt)
-        tag = result.fetchone()
-        return tag
-
 async def fetch_messages_by_tag(group_id: int, tag_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
