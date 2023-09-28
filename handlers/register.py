@@ -1,6 +1,5 @@
-import asyncio
-
 import hashlib
+import logging
 
 from aiogram import types, Dispatcher
 from config import bot
@@ -19,9 +18,8 @@ class FSMregister(StatesGroup):
     password = State()
     password_repeat = State()
 
-
 async def cancel_reg_btn(callback: types.CallbackQuery, state: FSMContext):
-    print('Operation canceled')
+    logging.info('Operation canceled')
     await callback.message.answer("Вы отменили процесс регистрации")
     await callback.answer()
     await bot.edit_message_reply_markup(chat_id=callback.message.chat.id, message_id=callback.message.message_id,
@@ -30,29 +28,47 @@ async def cancel_reg_btn(callback: types.CallbackQuery, state: FSMContext):
 
 
 async def register_start(message: types.Message):
+    """
+    Checking the existence of a user in the database.
+    In case of unexistence, the registration process begins.
+    """
     exist = await general.check_user_existence(message.from_user.id)
-    if (not exist):
+    if not exist:
         await message.reply("Отлично, как вас зовут? (Пример: Иванов И)")
-        print('----register_start----')
+        logging.info('Step register_start has begun...')
         await FSMregister.name.set()
     else:
         await message.reply("Вы уже зарегистрированы :) \n Если что-то ищете, то напишите /help")
 
 
 async def user_name_set(message: types.Message, state: FSMContext):
-    # ТУТ НАДО ВСТАВИТЬ ПРОВЕРКУ НА ИМЯ
+    """
+    User's choice of name.
+    And checking for length and compliance with existing commands.
+    """
+    if len(message.text) > 255 :
+        await message.reply("Данное имя слишком длинное (больше 255 символов), введите корректное имя (Пример: Иванов И).")
+        await FSMregister.name.set()    
+        return
+
+    if message.text[0] == "/":
+        await message.reply("Ваше имя не должно начинаться с /, введите корректное имя (Пример: Иванов И).")
+        await FSMregister.name.set()    
+        return
+    
     async with state.proxy() as data:
+        logging.info('User name set to ' + message.text)
         data['name'] = message.text
 
-    await bot.send_message(message.from_user.id, "Отлично, укажите вашу роль.\n\t Если выберете старосту, то вы создаете новую группу. \
-                        \n\tИначе - присоединяетесь к существующей", reply_markup=keyboards.role_chosing_mkp)
+    await bot.send_message(message.from_user.id, "Отлично, укажите вашу роль.\n\t ➡️При выборе роли старосты, вы перейдете к созданию новой группы. \
+                        \n\t ➡️При выборе роли участника, вы присоединитесь к существующей.", reply_markup=keyboards.role_chosing_mkp)
     await FSMregister.next()
 
 
 ############### ROLES: 0 - basic member, 1 - modder, 2 - owner (староста)
 
 async def user_role_owner_set(callback: types.CallbackQuery, state: FSMContext):
-    print("role set 2")
+    logging.info('User role set 2 (Owner)')
     async with state.proxy() as data:
         data['role'] = '2'
     await callback.message.answer("Вы выбрали роль старосты, теперь придумайте название группы",
@@ -64,7 +80,7 @@ async def user_role_owner_set(callback: types.CallbackQuery, state: FSMContext):
 
 
 async def user_role_regular_set(callback: types.CallbackQuery, state: FSMContext):
-    print("role set 0")
+    logging.info('User role set 0 (Basic member)')
     async with state.proxy() as data:
         data['role'] = '0'
     await callback.message.answer("Вы выбрали роль обычного пользователя, теперь введите название группы",
@@ -75,48 +91,63 @@ async def user_role_regular_set(callback: types.CallbackQuery, state: FSMContext
     await FSMregister.next()
 
 
-async def users_group_set(message: types.Message, state: FSMContext):  # FSM group
-    print("group set started...")
+async def user_group_set(message: types.Message, state: FSMContext):  # FSM group
+    """
+    Splitting the path to join a group or create it. 
+    Depends on the user role.
+    """
+    logging.info('Group set started...')
     async with state.proxy() as data:
-        if (data['role'] == '0'):
+        if data['role'] == '0':
             try:
                 fetch = await db.fetch_groups_info(group_name=message.text)
-                if (len(fetch) != 0):
+                if len(fetch) != 0:
                     data['group'] = message.text
-                    await message.reply('Группа найдена, введите пароль', reply_markup=keyboards.reg_move_mkp)
+                    await message.reply('Группа найдена, введите пароль.', reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
                 else:
-                    await message.reply('Группа с таким именем не найдена, введите еще раз',
+                    await message.reply('Группа с таким именем не найдена, введите еще раз.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.group.set()
             except Exception as ex:
                 await message.reply('Ошибка ' + str(ex))
+                logging.warning('An error has occurred: ' + str(ex))
                 await state.finish()
-        elif (data['role'] == '2'):
+        elif data['role'] == '2':
             try:
                 fetch = await db.fetch_groups_info(group_name=message.text)
-                if (len(fetch) == 0):
+                if len(message.text) > 255:
+                    await message.reply("Данное имя слишком длинное (больше 255 символов), введите корректное название.")
+                    await FSMregister.group.set()    
+                    return 
+                elif message.text[0] == "/":
+                    await message.reply("Название группы не должно начинаться с /, введите корректное название.")
+                    await FSMregister.group.set()    
+                    return
+                elif len(fetch) == 0:
                     data['group'] = message.text
-                    await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы',
+                    await message.reply('Корректное название группы. Придумайте и введите пароль для новой группы.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.next()
                 else:
-                    await message.reply('Группа с таким именем уже существует, введите другое название',
+                    await message.reply('Группа с таким именем уже существует, введите другое название.',
                                         reply_markup=keyboards.reg_move_mkp)
                     await FSMregister.group.set()
             except Exception as ex:
                 await message.reply('Ошибка ' + str(ex))
+                logging.warning('An error has occurred: ' + str(ex))
                 await state.finish()
 
 
-async def users_password_check(message: types.Message, state: FSMContext):  # FSM password
+async def user_password_check(message: types.Message, state: FSMContext):  # FSM password
     async with state.proxy() as data:
-        if (data['role'] == '0'):
+        if data['role'] == '0':
             try:
                 group_info_fetch = await db.fetch_groups_info(group_name=data['group'])
-                print('---users_password_check (role 0)--- \n', group_info_fetch)
-                if (hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]):
+                logging.info('User_password_check (role 0) %s', group_info_fetch[0])
+                if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
                     await message.answer('Пароль верный')
+                    # Saving information in the database about new user
                     await message.answer(f'{data["name"]} {data["group"]}')
                     await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
                     user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
@@ -127,37 +158,45 @@ async def users_password_check(message: types.Message, state: FSMContext):  # FS
                     await message.answer('Пароль неверный\nВведите пароль снова', reply_markup=keyboards.reg_move_mkp)
             except Exception as ex:
                 await message.reply('Ошибка ' + str(ex))
+                logging.warning('An error has occurred: ' + str(ex))
                 await state.finish()
-        elif (data['role'] == '2'):
+        elif data['role'] == '2':
             try:
                 data['password'] = message.text
                 await message.reply('Повторите пароль', reply_markup=keyboards.reg_move_mkp)
                 await FSMregister.next()
             except Exception as ex:
                 await message.reply('Ошибка ' + str(ex))
+                logging.warning('An error has occurred: ' + str(ex))
                 await state.finish()
 
 
-async def users_password_repeating(message: types.Message, state: FSMContext):
+async def user_password_repeating(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        print("---password repeating check started....---")
-        if (data['password'] == message.text):
+        logging.info('Password repeating check started...')
+        if data['password'] == message.text:
             await message.reply('Пароли совпадают.\nНовая группа успешно создана')
-            data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
-            await db.insert_groups_info(group_name=data['group'], password=data['password'])
+            try: 
+                # Saving information in the database about new group and user
+                data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
+                await db.insert_groups_info(group_name=data['group'], password=data['password'])
 
-            group_id = (await db.fetch_groups_info(group_name=data['group']))[0][0]
-            await db.insert_users(name=data['name'], group_id=group_id, tg_id=message.from_user.id)
+                group_id = (await db.fetch_groups_info(group_name=data['group']))[0][0]
+                await db.insert_users(name=data['name'], group_id=group_id, tg_id=message.from_user.id)
 
-            user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
-            await db.insert_groups_members(member_id=user_id, group_id=group_id, role=int(data['role']))
+                user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
+                await db.insert_groups_members(member_id=user_id, group_id=group_id, role=int(data['role']))
 
-            print('users_password_repeating finish\n', data['name'], data['password'])
+                logging.info('User_password_repeating finish ' + data['name'] + ' ' + data['password'])
 
-            # sending a message to created user with `admin_functions_mkp` keyboard
-            await bot.send_message(chat_id=message.chat.id, text="Выбери, что ты хочешь сделать",
-                                   reply_markup=keyboards.admin_functions_mkp)
-            await state.finish()
+                # sending a message to created user with `admin_functions_mkp` keyboard
+                await bot.send_message(chat_id=message.chat.id, text="Выбери, что ты хочешь сделать",
+                                    reply_markup=keyboards.admin_functions_mkp)
+                await state.finish()
+            except Exception as ex:
+                await message.reply('Ошибка ' + str(ex))
+                logging.warning('An error has occurred: ' + str(ex))
+                await state.finish()
         else:
             await message.reply('Пароли не совпадают. Введите новый пароль', reply_markup=keyboards.reg_move_mkp)
             await FSMregister.password.set()
@@ -166,13 +205,10 @@ async def users_password_repeating(message: types.Message, state: FSMContext):
 def register_handlers(dp: Dispatcher):
     dp.register_message_handler(register_start, commands=['reg'])
     dp.register_message_handler(user_name_set, state=FSMregister.name, content_types=types.ContentTypes.TEXT)
-    # dp.register_callback_query_handler(user_role_set)
+    dp.register_message_handler(user_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(user_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(user_password_repeating, state=FSMregister.password_repeat,  content_types=types.ContentTypes.TEXT)
+    
     dp.register_callback_query_handler(text='btn_regular_user', callback=user_role_regular_set, state=FSMregister.role)
     dp.register_callback_query_handler(text='btn_owner', callback=user_role_owner_set, state=FSMregister.role)
-    dp.register_message_handler(users_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
-    dp.register_message_handler(users_password_repeating, state=FSMregister.password_repeat,
-                                content_types=types.ContentTypes.TEXT)
-
     dp.register_callback_query_handler(text='btn_cancel', callback=cancel_reg_btn, state='*')
-    # dp.register_callback_query_handler(text='btn_back', callback=back_reg_btn, state='*')

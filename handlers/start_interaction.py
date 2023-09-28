@@ -20,7 +20,7 @@ async def start_interaction(message: types.Message):
         else:
             bot.send_message(message.from_user.id, "что-то пошло не так")
     else:
-        await bot.send_message(message.from_user.id, "Вы отсутствуете в базе данных.\n" +
+        await bot.send_message(message.from_user.id, "Вы не зарегистрированы.\n" +
                                "Чтоб зарегистрироваться напишите следующую команду:\n\t/reg")
 
 
