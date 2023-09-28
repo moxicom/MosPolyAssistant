@@ -44,12 +44,12 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     try:
         # await bot.send_message(chat_id=callback_query.from_user.id, text="Введите ваше сообщение:",
         #                        reply_markup=InlineKeyboardMarkup()
-        #                        .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+        #                        .add(InlineKeyboardButton("Отмена", callback_data="cancel_tag"))
         #                        )
         await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                     text="Введите ваше сообщение:",
                                     reply_markup=InlineKeyboardMarkup()
-                                    .add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+                                    .add(InlineKeyboardButton("Отмена", callback_data="cancel_tag"))
                                     )
     except Exception as ex:
         print("\t[LOG] SENDING MESSAGE ERROR")
@@ -90,7 +90,7 @@ async def confirm_message(message: types.Message, state: FSMContext):
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_msg_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_msg_no"))
-        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel_tag"))  # Add this line
 
         try:
             await message.reply("Ваше сообщение корректно?", reply_markup=markup)
@@ -113,7 +113,9 @@ async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext)
     """Asks user to retype new message"""
     try:
         await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Пожалуйста, введите ваше сообщение снова.", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Отмена", callback_data="cancel")))
+        await bot.send_message(chat_id=callback_query.from_user.id,
+                               text="Пожалуйста, введите ваше сообщение снова.",
+                               reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Отмена", callback_data="cancel_tag")))
         await States.MESSAGE.set()
     except Exception as ex:
         logger.warning(str(ex))
@@ -127,7 +129,7 @@ async def ask_for_tag(callback_query: types.CallbackQuery, state: FSMContext):
     markup.add(InlineKeyboardButton("Существующий тег", callback_data="admin-tag-select-existing_tag"))
     markup.add(InlineKeyboardButton("Добавить новый тег", 
     callback_data="admin-tag-create-new-tag"))
-    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel_tag"))
 
     # await message.reply("Выберете тег", reply_markup=markup)
     await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
@@ -205,7 +207,7 @@ async def confirm_tag(message: types.Message, state: FSMContext):
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="confirm_tag_yes"))
         markup.add(InlineKeyboardButton("Нет", callback_data="confirm_tag_no"))
-        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel_tag"))
         
         try:
             await message.reply(f"Выбранный тег: {tag}\nТег корректен?", reply_markup=markup)
@@ -254,9 +256,11 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
     markup = InlineKeyboardMarkup()
 
     # check if tag with id = tag_id is root tag
+    button_submit = None
     if tag_id == None:
-        tags_text = "Сейчас вы находитесь в корневом теге.\nВыберите тег из списка ниже:\n"
-        markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:Root"))
+        tags_text = "*Сейчас вы находитесь в корневом теге.\nВыберите тег из списка ниже:*\n"
+        # markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:Root"))
+        button_submit = InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:Root")
     else:
         try:
             current_tag = await db.fetch_tag_by_id_group_id(tag_id, group_id)
@@ -265,11 +269,12 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
             logger.warning("Can not get current tag by id")
             await state.finish()
             return
-        tags_text = f"Сейчас вы находитесь в теге '{current_tag[2]}'.\n"
-        markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:{current_tag[0]}"))
+        tags_text = f"*Сейчас вы находитесь в теге* _'{current_tag[2]}'_ .\n"
+        # markup.add(InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:{current_tag[0]}"))
+        button_submit = InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:{current_tag[0]}")
         markup.add(InlineKeyboardButton("< К родительскому тегу", callback_data=f"switch_to_tag:{current_tag[-1]}"))
 
-    markup.add(InlineKeyboardButton("Отмена", callback_data="cancel"))
+    markup.add(button_submit, InlineKeyboardButton("Отмена", callback_data="cancel_tag"))
 
     # if show_create_btn == True:
     #     markup.add(InlineKeyboardButton("Создать новый тег", callback_data="admin-tag-create-new-tag"))
@@ -282,7 +287,8 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
         await bot.edit_message_text(tags_text + "В данный момент здесь нет тегов",
                                     chat_id=callback_query.message.chat.id,
                                     message_id=callback_query.message.message_id, 
-                                    reply_markup=markup)
+                                    reply_markup=markup,
+                                    parse_mode="Markdown")
         return
     
     for tag in tags:
@@ -291,7 +297,11 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
 
     try:
         # await bot.send_message(callback_query.from_user.id, tags_text, reply_markup=markup)
-        await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, text=tags_text, reply_markup=markup)
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id,
+                                    message_id=callback_query.message.message_id,
+                                    text=tags_text,
+                                    reply_markup=markup,
+                                    parse_mode="Markdown")
         logger.info("root tags were sent to user")
     except Exception as ex:
         logger.warning("Can not send a message to user with root tags")
@@ -336,9 +346,10 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
             await state.update_data(tag=tag)
 
         markup = InlineKeyboardMarkup(row_width=2)
-        markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_full_yes"))
-        markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_full_no"))
-        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel"))  # Add this line
+        markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_full_yes"),
+                   InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_full_no"))
+        # markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_full_no"))
+        markup.add(InlineKeyboardButton("Отменить", callback_data="cancel_tag"))  # Add this line
 
         try:
             if tag != 'admin-ExIsTinG-6260-tag':
@@ -407,7 +418,9 @@ async def confirm_full_no(callback_query: types.CallbackQuery, state: FSMContext
 
 
 async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
+    logger.info("Cancel button pressed")
     await bot.answer_callback_query(callback_query.id)
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     await state.finish()
 
 
@@ -445,7 +458,7 @@ def tags_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(invoke_tag_menu, lambda c: c.data.startswith("switch_to_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
     dp.register_callback_query_handler(confirm_tag_position, lambda c: c.data.startswith("submit_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
 
-    dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel", state="*")  
+    dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel_tag", state="*")  
 
 # CALLBACKS FROM MAIN KEYBOARDS:
 # change_password, list_of_group, write_message
