@@ -2,3 +2,4 @@ env/
 __pycache__/
 handlers/__pycache__
 keyboards/__pycache__
+MosPolyAssistant.log

@@ -211,6 +211,7 @@ async def confirm_tag(message: types.Message, state: FSMContext):
         
         try:
             await message.reply(f"Выбранный тег: {tag}\nТег корректен?", reply_markup=markup)
+            logger.info("")
         except Exception as ex:
             await message.answer("Внутренняя ошибка")
             await state.finish()
@@ -228,7 +229,7 @@ async def confirm_tag_yes(callback_query: types.CallbackQuery, state: FSMContext
 
 async def confirm_tag_no(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
-    await ask_for_tag(callback_query.message, state)
+    await ask_for_tag(callback_query, state)
 
 
 async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, show_create_btn = False):
@@ -352,12 +353,15 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
         markup.add(InlineKeyboardButton("Отменить", callback_data="cancel_tag"))  # Add this line
 
         try:
+            await bot.delete_message(message.chat.id, message.message_id)
             if tag != 'admin-ExIsTinG-6260-tag':
-                await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
-                            reply_markup=markup)
+                await bot.send_message(message.chat.id,
+                                       f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
+                                        reply_markup=markup)
             else:
-                await message.reply(f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}",
-                            reply_markup=markup)
+                await bot.send_message(message.chat.id,
+                                       f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}",
+                                        reply_markup=markup)
         except Exception as ex:
             await message.answer("Внутренняя ошибка")
             logger.fatal(str(ex))
@@ -419,9 +423,12 @@ async def confirm_full_no(callback_query: types.CallbackQuery, state: FSMContext
 
 async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
     logger.info("Cancel button pressed")
-    await bot.answer_callback_query(callback_query.id)
-    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-    await state.finish()
+    try:
+        await bot.answer_callback_query(callback_query.id)
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+        await bot.send_message(callback_query.message.chat.id, "Вы отменили текущее действие. В случае необходимости \nнажмите на > /help < Или напишите эту команду в чат")
+    except Exception as ex:
+        await state.finish()
 
 
 async def process_callback_actual_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
