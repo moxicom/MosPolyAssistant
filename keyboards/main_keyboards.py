@@ -26,8 +26,10 @@ admin_functions_mkp = InlineKeyboardMarkup(row_width=2)
 change_password = InlineKeyboardButton("Изменить пароль", callback_data="change_password")
 list_of_group = InlineKeyboardButton("Список группы", callback_data="list_of_group")
 write_message = InlineKeyboardButton("Написать сообщение", callback_data="write_message")
+delete_group = InlineKeyboardButton("Удалить группу", callback_data="delete_group")
+
 admin_functions_mkp.row(list_of_group, change_password)
-admin_functions_mkp.row(write_message)
+admin_functions_mkp.row(write_message, delete_group)
 
 
 ######################## CLIENT BUTTONS ########################
