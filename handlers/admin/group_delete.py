@@ -1,20 +1,15 @@
-import asyncio
 import hashlib
 import logging
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher.filters import Text, Command
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ParseMode
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from config import bot
 from keyboards import main_keyboards as keyboards
 from Db import db_functions as db
 from handlers import general
-from datetime import datetime
 
 
 class States(StatesGroup):
@@ -32,8 +27,10 @@ internal_error_msg = "Внутрисерверная ошибка. Повтор�
 def cancel_button_markup():
     return InlineKeyboardMarkup().add(InlineKeyboardButton("Отменить", callback_data="cancel"))
 
+
 async def group_delete_start(callback_query: types.CallbackQuery, state: FSMContext):
     """Checking the administrator password. If true, starts the delete process."""
+    logging.info("group_delete_start")
     markup = ReplyKeyboardRemove()
     logging.info("Started password check to delete a group")
     await state.finish()
@@ -71,20 +68,16 @@ async def password_check(message: types.Message, state: FSMContext):
         group_info_fetch = await db.fetch_group_info_by_id(group_id)
 
         logging.info('Password_check to delete group %s', group_info_fetch[0])
-        
+
         if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
             await message.answer('Пароль верный')
             # Saving information in the database about new user
-            await message.answer(f'{data["name"]} {data["group"]}')
-            await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
-            user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
-            await db.insert_groups_members(member_id=user_id, group_id=group_info_fetch[0][0],
-                                           role=int(data['role']))
-            await state.finish()
+            await state.()
         else:
-            await message.answer('Пароль неверный\nВведите пароль снова', reply_markup=keyboards.reg_move_mkp)
+            await message.answer('Пароль неверный')
+            await state.finish()
     except Exception as ex:
-        await message.reply('Ошибка ' + str(ex))
+        await message.reply(internal_error_msg)
         logging.warning('An error has occurred: ' + str(ex))
         await state.finish()
 
@@ -92,9 +85,9 @@ async def password_check(message: types.Message, state: FSMContext):
     # Save the user's message into the state
     try:
         await state.update_data(user_text=message.text)
-        logger.info("state updated: user_text set")
+        logging.info("state updated: user_text set")
     except Exception as ex:
-        logger.debug("ERROR TO UPDATE state data")
+        logging.debug("ERROR TO UPDATE state data")
         await message.answer(internal_error_msg)
         await state.finish()
         return
@@ -107,8 +100,41 @@ async def password_check(message: types.Message, state: FSMContext):
         await state.finish()
         return
 
-def tags_handlers(dp: Dispatcher):
+async def confirm_message(message: types.Message, state: FSMContext):
+    
+
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_msg_yes"))
+    markup.add(InlineKeyboardButton("Нет", callback_data="admin-tag-confirm_msg_no"))
+    try:
+         await message.reply("Вы уверены что хотите удалить группу? (Все сообщения, теги, файлы будут удалены)", reply_markup=markup)
+    except Exception as ex:
+        await message.answer(internal_error_msg)
+        await state.finish()
+        return
+    await States.DELETE_FROM_GROUP_MEMBERS.set()
+
+async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)
+    # await ask_for_tag(callback_query.message, state)
+    await ask_for_tag(callback_query, state)
+    # !!!! MAKE THERE `ПОСМОТРЕТЬ ВСЕ ТЕГИ BTN`
+
+
+async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext):
+    """Stop group delete"""
+    state.finish()
+    bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                                    text="Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
+
+
+def group_delete_handlers(dp: Dispatcher):
     dp.register_message_handler(password_check, state=States.PASSWORD_CHECK)
 
+    # message text confirm result funcs
+    dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "admin-tag-confirm_msg_yes", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_msg_no, lambda c: c.data == "admin-tag-confirm_msg_no", state=States.CONFIRM) 
     
     dp.register_callback_query_handler(group_delete_start, lambda c: c.data == "group_delete", state="*")
+
+    #dp.register_callback_query_handler(text='group_delete', callback=group_delete_start, state='*')
