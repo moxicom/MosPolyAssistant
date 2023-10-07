@@ -31,7 +31,7 @@ async def help_command(message: types.Message):
     elif role == 0:
         await message.reply("Вот что ты можешь сделать")
     else:
-        bot.send_message(message.from_user.id, "что-то пошло не так")
+        await bot.send_message(message.from_user.id, "что-то пошло не так")
 
 
 def start_interactions_handlers(dp: Dispatcher):
