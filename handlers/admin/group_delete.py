@@ -15,13 +15,8 @@ from handlers import general
 class States(StatesGroup):
     PASSWORD_CHECK = State()
     CONFIRM = State()
-    DELETE_FROM_GROUP_MEMBERS = State()
-    DELETE_FROM_USERS = State()
-    DELETE_FROM_FILES = State()
-    DELETE_FROM_IMAGES = State()
-    DELETE_FROM_MESSAGES = State()
-    DELETE_FROM_TAGS = State()
-    DELETE_FROM_GROUP_INFO = State()
+    DELETE_GROUP = State()
+    
 
 internal_error_msg = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
 
@@ -66,7 +61,6 @@ async def group_delete_start(callback_query: types.CallbackQuery, state: FSMCont
 
 async def password_check(message: types.Message, state: FSMContext):   
     try:
-        print(1)
         async with state.proxy() as data:
             # Deleting the markup of the previous message
             prev_bot_message_id = data['prev_bot_message_id']
@@ -117,7 +111,7 @@ async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext
     """Start group delete"""
     try:
         await bot.answer_callback_query(callback_query.id)
-        await States.DELETE_FROM_GROUP_MEMBERS.set()
+        await States.DELETE_GROUP.set()
         
         await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                     text="Начат процесс удаления группы...", reply_markup=None)
@@ -126,7 +120,7 @@ async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext
         logging.warning('|group_delete/confirm_msg_yes| An error has occurred: ' + str(ex))
         await state.finish()
         return
-    await delete_group_members(callback_query, state)
+    await delete_group(callback_query, state)
     
 
 async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext):
@@ -135,16 +129,33 @@ async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext)
     await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                     text="Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
     
-async def delete_group_members(message: types.Message, state: FSMContext):
+async def delete_group(message: types.Message, state: FSMContext):
     """Search for all users in the groups_members table and delete from group_members"""
     logging.info("|group_delete/delete_group_members| group members delete start")
-    
+    async with state.proxy() as data:
+        # Deleting the markup of the previous message
+        group_id = data['group_id'] 
+    try:
+        await db.delete_group_members_by_group_id(group_id)
+        await db.delete_users_by_group_id(group_id)
+        #await db.delete_images_by_message_id(message_id)
+        await db.delete_messages_by_group_id(group_id)
+        await db.delete_tags_by_group_id(group_id)
+        await db.delete_group_info_by_group_id(group_id)
+    except Exception as ex:
+        await message.answer(internal_error_msg)
+        logging.warning('|group_delete/delete_group_members| An error has occurred: ' + str(ex))
+        await state.finish()
+        return
+    logging.info("|group_delete/delete_group_members| group members delete finished")
+    await bot.send_message(message.from_user.id, text="Группа успешно удалена")
+    await state.finish()
 
 
 def group_delete_handlers(dp: Dispatcher):
     dp.register_message_handler(password_check, state=States.PASSWORD_CHECK)
     dp.register_message_handler(confirm_message, state=States.CONFIRM)
-    dp.register_message_handler(delete_group_members, state=States.DELETE_FROM_GROUP_MEMBERS)
+    dp.register_message_handler(delete_group, state=States.DELETE_GROUP)
 
     # message text confirm result funcs
     dp.register_callback_query_handler(confirm_msg_yes, lambda c: c.data == "admin-group_delete-confirm_msg_yes", state="*")
