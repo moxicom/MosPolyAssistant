@@ -201,7 +201,19 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
         print('-' * 15 + '\n\t fetch_groups_members result = \n\t', group_members, '\n' + '-' * 15)
         return group_members
 
+async def delete_group_members_by_group_id(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("groups_members", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('member_id', Integer),
+                      Column('group_id', Integer),
+                      Column('role', Integer))
 
+        delete_users = table.delete().where(table.c.group_id == group_id)
+
+        await conn.execute(delete_users)
+        await conn.commit()
 
 
 ########################### tags ########################
