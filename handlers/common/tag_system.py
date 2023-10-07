@@ -8,6 +8,7 @@ from config import bot
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_functions as db
+from Db import paginator_db_function as paginator
 
 
 logger = logging.getLogger('[LOG-TagSystem]')
@@ -47,10 +48,10 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     await invoke_tag_system(callback_query, state)
 
 
-async def invoke_tag_system(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page = 1, page_limit = 10):
-    #  \nIf callback data is common_tag_system_switch_tag: `cts_swt:<tag_id>:<mode>:<page>`
+async def invoke_tag_system(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page_number = 1, items_per_page = 10):
+    #  \nIf callback data is common_tag_system_switch_tag: `cts_swt:<tag_id>:<mode>:<page_number>`
     """Callback data has the following parameters:
-        \nIf callback data is common_tag_system_switch_tag: `cts_swt:<tag_id>:<mode>:<page>`
+        \nIf callback data is common_tag_system_switch_tag: `cts_swt:<tag_id>:<mode>:<page_number>`
         \n mode: tag/msg
        """
     logger.info("Tag system function invoked")
@@ -60,15 +61,15 @@ async def invoke_tag_system(callback_query: types.CallbackQuery, state: FSMConte
         parameters = callback_query.data.split(":")
         tag_id = parameters[1]
         mode = parameters[2]
-        page = parameters[3]
+        page_number = parameters[3]
 
     if mode == "tag":
-        await tag_system_show_tags(callback_query, state, tag_id, mode, page, page_limit)
+        await tag_system_show_tags(callback_query, state, tag_id, mode, page_number, items_per_page)
     elif mode == "msg":
-        await tag_system_show_messages(callback_query, state, tag_id, mode, page, page_limit)
+        await tag_system_show_messages(callback_query, state, tag_id, mode, page_number, items_per_page)
 
 
-async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page = 1, page_limit = 10):
+async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page_number = 1, items_per_page = 10):
     try:
         async with state.proxy() as data:
             group_id = data.get("group_id")
@@ -76,17 +77,28 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
         logger.warning("Can not get group_id")
         await state.finish()
         return
+    
     markup = InlineKeyboardMarkup()
     markup.add(cancel_btn)
     message_text = ""
+
     err, message_text = await get_message_common_info(state, tag_id, markup, message_text)
     if err:
         return
-    # should use function to get current page of tags
-    # and do not forget about
-    #
+
+    # should use function to get current page_number of tags
     try:
-        # await bot.send_message(callback_query.from_user.id, tags_text, reply_markup=markup)
+        tags, is_first_page, is_last_page = await paginator.fetch_tags_with_pagination(page_number, items_per_page, group_id, tag_id)
+    except Exception:
+        logger.exception("Except inside tags paginator")
+        await state.finish()
+        return
+    
+    # creating paginator btns
+    paginator_btns = []
+
+
+    try:
         await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                     message_id=callback_query.message.message_id,
                                     text=message_text,
@@ -99,7 +111,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
         await state.finish()
 
 
-async def tag_system_show_messages(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page = 1, page_limit = 10):
+async def tag_system_show_messages(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page_number = 1, items_per_page = 10):
     pass
 
 
