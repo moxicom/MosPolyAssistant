@@ -3,6 +3,7 @@ from sqlalchemy.sql import select
 from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, BIGINT, and_
 from sqlalchemy.orm import declarative_base as base
 import asyncio
+import logging
 from sqlalchemy import update
 
 # myBase = base()
@@ -91,6 +92,17 @@ async def delete_users(tg_id: BIGINT):
         await conn.execute(deleteStmt)
         await conn.commit()
 
+async def delete_users_by_group_id(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('users', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('name', VARCHAR),
+                      Column('group_id', Integer),
+                      Column('tg_id', BIGINT))
+        deleteStmt = table.delete().where(table.c.group_id == group_id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
 
 ########################### groups_info #################
 async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
