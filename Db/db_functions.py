@@ -101,9 +101,9 @@ async def delete_users_by_group_id(group_id: int):
                       Column('group_id', Integer),
                       Column('tg_id', BIGINT))
         deleteStmt = table.delete().where(table.c.group_id == group_id)
-        logging.info("|Db/db_functions/delete_users_by_group_id| complited")
         await conn.execute(deleteStmt)
         await conn.commit()
+        logging.info("|Db/db_functions/delete_users_by_group_id| complited")
 
 ########################### groups_info #################
 async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
@@ -176,6 +176,20 @@ async def change_group_info(id: int, field: str, new_value: str):
         except:
             return -1
 
+async def delete_group_info_by_group_id(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('groups_info', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('name', VARCHAR(20)),
+                      Column('password', VARCHAR(20))
+                      )
+
+        deleteStmt = table.delete().where(table.c.id == group_id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functionsdelete_group_info_by_group_id| complited")
+
 
 ###########################  groups_members ####################
 async def insert_groups_members(member_id: int, group_id: int, role: int):
@@ -224,9 +238,9 @@ async def delete_group_members_by_group_id(group_id: int):
                       Column('role', Integer))
 
         deleteStmt = table.delete().where(table.c.group_id == group_id)
-        logging.info("|Db/db_functions/delete_group_members_by_group_id| complited")
         await conn.execute(deleteStmt)
         await conn.commit()
+        logging.info("|Db/db_functions/delete_group_members_by_group_id| complited")
 
 
 ########################### tags ########################
@@ -334,6 +348,19 @@ async def fetch_tag_by_name(group_id: int, name: str):
         tag = result.fetchone()
         return tag
 
+async def delete_tags_by_group_id(group_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        deleteStmt = table.delete().where(table.c.group_id == group_id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_tags_by_group_id| complited")
+
 
 ########################### messages ####################
 async def insert_messages(group_id: int, title: str, text: str, tag_id: int, images: str, videos: str, files: str,
@@ -355,6 +382,40 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
         await conn.execute(insertStmt)
         await conn.commit()
 
+async def delete_messages_by_group_id(group_id: int):
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table("messages", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('title', VARCHAR),
+                      Column('text', VARCHAR),
+                      Column('tag_id', Integer),
+                      Column('images', VARCHAR),
+                      Column('videos', VARCHAR),
+                      Column('files', VARCHAR),
+                      Column('created_at', Date))
+        
+        deleteStmt = table.delete().where(table.c.group_id == group_id)
+
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_messages_by_group_id| complited")
+
+########################### images ########################
+
+async def delete_images_by_message_id(message_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('images', metadata,
+                      Column('message_id', BIGINT, primary_key=True),
+                      Column('image_id', VARCHAR),
+                      Column('id', BIGINT, primary_key=True))
+        deleteStmt = table.delete().where(table.c.message_id == message_id)
+
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_users_by_group_id| complited")
 
 
 ########################### CLIENT ###########################
