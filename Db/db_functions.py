@@ -225,6 +225,9 @@ async def delete_group_members_by_group_id(group_id: int):
         delete_users = table.delete().where(table.c.group_id == group_id)
 
         await conn.execute(delete_users)
+        deleteStmt = table.delete().where(table.c.group_id == group_id)
+        logging.info("|Db/db_functions/delete_group_members_by_group_id| complited")
+        await conn.execute(deleteStmt)
         await conn.commit()
 
 
