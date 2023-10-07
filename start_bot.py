@@ -3,6 +3,7 @@ import asyncio
 from handlers import start_interaction, register, client
 
 from config import bot, dp
+from handlers.common import tag_system
 from handlers.admin import change_password, list_of_group, basics, tags
 
 token = '<token>'
@@ -26,6 +27,7 @@ root_logger.addHandler(file_handler)
 ### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)
 register.register_handlers(dp)
+tag_system.tag_system_handlers(dp)
 ###
 
 ### ADMIN HANDLERS
