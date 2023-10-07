@@ -82,7 +82,6 @@ async def password_check(message: types.Message, state: FSMContext):
 
     try:
         if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[2]:
-            await message.answer('Пароль верный')
             await confirm_message(message, state)
         else:
             await message.answer('Пароль неверный. Удаление группы прекращено')
@@ -115,6 +114,7 @@ async def confirm_msg_yes(callback_query: types.CallbackQuery, state: FSMContext
         
         await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                     text="Начат процесс удаления группы...", reply_markup=None)
+        
     except Exception as ex:
         await callback_query.message.answer(internal_error_msg)
         logging.warning('|group_delete/confirm_msg_yes| An error has occurred: ' + str(ex))
@@ -129,7 +129,7 @@ async def confirm_msg_no(callback_query: types.CallbackQuery, state: FSMContext)
     await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                     text="Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
     
-async def delete_group(message: types.Message, state: FSMContext):
+async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
     """Search for all users in the groups_members table and delete from group_members"""
     logging.info("|group_delete/delete_group_members| group members delete start")
     async with state.proxy() as data:
@@ -143,12 +143,14 @@ async def delete_group(message: types.Message, state: FSMContext):
         await db.delete_tags_by_group_id(group_id)
         await db.delete_group_info_by_group_id(group_id)
     except Exception as ex:
-        await message.answer(internal_error_msg)
+        await callback_query.answer(internal_error_msg)
         logging.warning('|group_delete/delete_group_members| An error has occurred: ' + str(ex))
         await state.finish()
         return
     logging.info("|group_delete/delete_group_members| group members delete finished")
-    await bot.send_message(message.from_user.id, text="Группа успешно удалена")
+    await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                                    text="Группа успешно удалена", reply_markup=None)
+    #await bot.send_message(callback_query.message.from_user.id, text="Группа успешно удалена")
     await state.finish()
 
 
