@@ -1,7 +1,7 @@
 import logging
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, ParseMode
 from aiogram.dispatcher import FSMContext
 from config import bot
 
@@ -14,7 +14,7 @@ from Db import paginator_db_function as paginator
 logger = logging.getLogger('[LOG-TagSystem]')
 INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
 
-cancel_btn = InlineKeyboardButton("❌ Закрыть", callback_data="cancel_tag_system")
+cancel_btn = InlineKeyboardButton("Закрыть", callback_data="cancel_tag_system")
 
 
 class States(StatesGroup):
@@ -131,7 +131,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
                                     message_id=callback_query.message.message_id,
                                     text=message_text,
                                     reply_markup=markup,
-                                    parse_mode="Markdown")
+                                    parse_mode=ParseMode.MARKDOWN)
         logger.info("Tags list were sent to user")
     except Exception as ex:
         logger.warning("Can not send a message to user with tags list")
@@ -208,11 +208,11 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
     """Returns error_bool, message_text
     \n Also this function add a cancel, to parent tag, change mode buttons
     """
-    
+    # ✉️|📁|
     TAG_MODE = "tag"
     MSG_MODE = "msg"
     CHANGED_MODE = MSG_MODE if mode == TAG_MODE else TAG_MODE
-    CHANGE_MODE_TEXT = "✉️|Увидеть сообщения" if mode == TAG_MODE else "📁|Увидеть теги"
+    CHANGE_MODE_TEXT = "Увидеть сообщения" if mode == TAG_MODE else "Увидеть теги"
     BUTTON_TAG_ID = "root" if tag_id == None else tag_id
     CHANGE_MODE_BTN = InlineKeyboardButton(CHANGE_MODE_TEXT, callback_data=f"cts_swt:{BUTTON_TAG_ID}:{CHANGED_MODE}:1")
 
@@ -249,7 +249,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             new_tag_id = current_tag[-1]
 
         # adding `go to parent` button
-        message_text = f"*Сейчас вы находитесь в теге* _'{current_tag[2]}'_ .\n"
+        message_text = f"Сейчас вы находитесь в теге\n*{current_tag[2]}*:\n"
         markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
         
         markup.add(CHANGE_MODE_BTN)
