@@ -76,6 +76,8 @@ async def invoke_tag_system(callback_query: types.CallbackQuery, state: FSMConte
 
 
 async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page_number = 1, items_per_page = 10):
+    """Show a list of tags with paginator"""
+
     logger.info("tag_system_show_tags invoked")
 
     try:
@@ -89,7 +91,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
     markup = InlineKeyboardMarkup()
     message_text = ""
 
-    err, message_text = await get_message_common_info(state, tag_id, markup, group_id, mode)
+    err, message_text = await get_message_common_info(callback_query, state, tag_id, markup, group_id, mode)
     if err:
         return
 
@@ -142,7 +144,7 @@ async def tag_system_show_messages(callback_query: types.CallbackQuery, state: F
     pass
 
 
-async def get_message_common_info(state: FSMContext, tag_id: int, markup: InlineKeyboardMarkup, group_id: int, mode):
+async def get_message_common_info(callback_query: types.CallbackQuery, state: FSMContext, tag_id: int, markup: InlineKeyboardMarkup, group_id: int, mode):
     """Returns error_bool, message_text"""
     logger.info(f"get_message_common_info tag_id:{tag_id}, group id:{group_id}, mode:{mode}")
     if tag_id == None:
@@ -158,6 +160,14 @@ async def get_message_common_info(state: FSMContext, tag_id: int, markup: Inline
             await state.finish()
             return True, ""
         
+        # check if tag have deleted or missed
+        if current_tag == None:
+            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+            await bot.send_message(callback_query.message.chat.id, "Выбранный тег скорее всего был удален")
+            await state.finish()
+            return True, ""
+        
+        # check if current tag is a root tag
         if current_tag[-1] == None:
             new_tag_id = "root"
         else:
