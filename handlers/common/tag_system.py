@@ -12,9 +12,9 @@ from Db import paginator_db_function as paginator
 
 
 logger = logging.getLogger('[LOG-TagSystem]')
-internal_error_msg = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
+INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
 
-cancel_btn = InlineKeyboardButton("Закрыть", callback_data="cancel_tag_system")
+cancel_btn = InlineKeyboardButton("❌ Закрыть", callback_data="cancel_tag_system")
 
 
 class States(StatesGroup):
@@ -42,7 +42,7 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     except Exception as ex:
         logger.exception("Exception while updating group_id")
         logger.warning("Update group_id state error")
-        await bot.send_message(callback_query.from_user.id, internal_error_msg)
+        await bot.send_message(callback_query.from_user.id, INTERNAL_ERROR_MSG)
         await state.finish()
         return
     await States.PROCESS.set()
@@ -59,7 +59,7 @@ async def invoke_tag_system(callback_query: types.CallbackQuery, state: FSMConte
 
     if callback_query.data.startswith("cts_swt"):
         parameters = callback_query.data.split(":")
-        if parameters[1] != "root":
+        if parameters[1] != "root" or tag_id != None:
             tag_id = int(parameters[1])
         else:
             tag_id = None
@@ -104,7 +104,6 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
         return
     
     # creating paginator btns
-    paginator_btns = []
     left_arrow_unicode = "⬅️"
     right_arrow_unicode = "➡️"
     previous_page = InlineKeyboardButton(f"{left_arrow_unicode}",
@@ -136,20 +135,96 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
         logger.info("Tags list were sent to user")
     except Exception as ex:
         logger.warning("Can not send a message to user with tags list")
-        await bot.send_message(callback_query.from_user.id, internal_error_msg)
+        await bot.send_message(callback_query.from_user.id, INTERNAL_ERROR_MSG)
         await state.finish()
 
 
 async def tag_system_show_messages(callback_query: types.CallbackQuery, state: FSMContext, tag_id = None, mode = "tag", page_number = 1, items_per_page = 10):
-    pass
+    logger.info("tag_system_show_messages invoked" )
+    logger.info(f"{tag_id} {mode} {page_number}")
+    # getting a group_id from state data
+    try:
+        async with state.proxy() as data:
+            group_id = data.get("group_id")
+    except Exception:
+        logger.warning("Can not get group_id")
+        await state.finish()
+        return
+    
+    markup = InlineKeyboardMarkup()
+    message_text = ""
+
+    err, message_text = await get_message_common_info(callback_query, state, tag_id, markup, group_id, mode)
+    if err:
+        return
+
+    # should use function to get current page_number of tags
+    try:
+        messages, is_first_page, is_last_page = await paginator.fetch_messages_with_pagination(page_number, items_per_page, group_id, tag_id)
+        pass
+    except Exception:
+        logger.exception("Except inside tags paginator")
+        await state.finish()
+        return
+    
+    # creating paginator btns
+    left_arrow_unicode = "⬅️"
+    right_arrow_unicode = "➡️"
+    previous_page = InlineKeyboardButton(f"{left_arrow_unicode}",
+                                         callback_data=f"cts_swt:{tag_id}:{mode}:{page_number - 1}")
+    next_page = InlineKeyboardButton(f"{right_arrow_unicode}",
+                                         callback_data=f"cts_swt:{tag_id}:{mode}:{page_number + 1}")
+    if is_first_page and not is_last_page:
+        markup.add(next_page)
+    elif not is_first_page and not is_last_page:
+        markup.add(previous_page, next_page)
+    elif not is_first_page and is_last_page:
+        markup.add(previous_page)  
+
+    # 📁
+    message_emoji = '✉️'
+    for message in messages:
+        markup.add(
+            InlineKeyboardButton(
+                f"{message_emoji}|{message[2]}",
+                # !!! SHOULD ADD A SEND MESSAGE FUNCTION
+                callback_data="qwerty"
+            ))
+
+    try:
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id,
+                                    message_id=callback_query.message.message_id,
+                                    text=message_text,
+                                    reply_markup=markup,
+                                    parse_mode="Markdown")
+        logger.info("Messages list were sent to user")
+    except Exception as ex:
+        logger.warning("Can not send a message to user with messages list")
+        await bot.send_message(callback_query.from_user.id, INTERNAL_ERROR_MSG)
+        await state.finish()
 
 
 async def get_message_common_info(callback_query: types.CallbackQuery, state: FSMContext, tag_id: int, markup: InlineKeyboardMarkup, group_id: int, mode):
-    """Returns error_bool, message_text"""
+    """Returns error_bool, message_text
+    \n Also this function add a cancel, to parent tag, change mode buttons
+    """
+    
+    TAG_MODE = "tag"
+    MSG_MODE = "msg"
+    CHANGED_MODE = MSG_MODE if mode == TAG_MODE else TAG_MODE
+    CHANGE_MODE_TEXT = "✉️|Увидеть сообщения" if mode == TAG_MODE else "📁|Увидеть теги"
+    BUTTON_TAG_ID = "root" if tag_id == None else tag_id
+    CHANGE_MODE_BTN = InlineKeyboardButton(CHANGE_MODE_TEXT, callback_data=f"cts_swt:{BUTTON_TAG_ID}:{CHANGED_MODE}:1")
+
     logger.info(f"get_message_common_info tag_id:{tag_id}, group id:{group_id}, mode:{mode}")
+
+    # getting a current tag
     if tag_id == None:
         message_text = "*Сейчас вы находитесь в корневом теге*"
         markup.add(cancel_btn)
+
+        # creating a button to change a view mode        
+        markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
         try:
@@ -173,8 +248,11 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
         else:
             new_tag_id = current_tag[-1]
 
+        # adding `go to parent` button
         message_text = f"*Сейчас вы находитесь в теге* _'{current_tag[2]}'_ .\n"
         markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
+        
+        markup.add(CHANGE_MODE_BTN)
         return False, message_text
 
 
