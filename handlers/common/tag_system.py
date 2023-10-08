@@ -103,9 +103,9 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
         await state.finish()
         return
     
-    # creating paginator btns
-    left_arrow_unicode = "⬅️"
-    right_arrow_unicode = "➡️"
+    # creating paginator btns ⬅️➡️
+    left_arrow_unicode = "«"
+    right_arrow_unicode = "»"
     previous_page = InlineKeyboardButton(f"{left_arrow_unicode}",
                                          callback_data=f"cts_swt:{tag_id}:{mode}:{page_number - 1}")
     next_page = InlineKeyboardButton(f"{right_arrow_unicode}",
