@@ -34,19 +34,13 @@ async def fetch_tags_with_pagination(page_number: int, items_per_page: int, grou
         rows = result.fetchall()
 
         if not rows:
-            return [], False, False
+            if page_number != 1:
+                return [], False, True
+            else:
+                return [], True, True
         
         tags = rows
         is_first_page = page_number == 1
         is_last_page = len(rows) < items_per_page
 
         return tags, is_first_page, is_last_page
-
-
-
-
-
-
-
-
-
