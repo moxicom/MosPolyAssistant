@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from aiogram import types
 
 from Db import db_functions as db
@@ -12,7 +13,7 @@ async def check_user_existence(tg_id: int) -> bool:
         else:
             return True
     except Exception as ex:
-        print('EXCEPTION: ' + str(ex))
+        logging.warning('EXCEPTION: ' + str(ex))
 
 
 async def get_group_id_by_tg_id(tg_id: int):
@@ -20,7 +21,7 @@ async def get_group_id_by_tg_id(tg_id: int):
         fetch_user = await db.fetch_users(tg_id=tg_id)
         return int(fetch_user[0][2])
     except Exception as ex:
-        print('EXCEPTION: ' + str(ex))
+        logging.warning('EXCEPTION: ' + str(ex))
 
 
 async def get_role_by_tg_id(tg_id: int):
@@ -33,7 +34,7 @@ async def get_role_by_tg_id(tg_id: int):
                 role = member[3]
         return role
     except Exception as ex:
-        print('EXCEPTION: ' + str(ex))
+        logging.warning('EXCEPTION: ' + str(ex))
 
 
 async def get_group_name_by_tg_id(tg_id: int):
