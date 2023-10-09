@@ -3,7 +3,7 @@ import asyncio
 from handlers import start_interaction, register, client
 
 from config import bot, dp
-from handlers.admin import change_password, list_of_group, basics, tags
+from handlers.admin import change_password, list_of_group, basics, tags, group_delete
 
 token = '<token>'
 
@@ -33,6 +33,7 @@ basics.admin_basic_handlers(dp)
 change_password.change_password_handlers(dp)
 list_of_group.list_of_group_handlers(dp)
 tags.tags_handlers(dp)
+group_delete.group_delete_handlers(dp)
 ###
 
 ### CLIENT HANDLERS
