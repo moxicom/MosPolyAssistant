@@ -427,6 +427,7 @@ async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
         await bot.answer_callback_query(callback_query.id)
         await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
         await bot.send_message(callback_query.message.chat.id, "Вы отменили текущее действие. В случае необходимости \nнажмите на > /help < Или напишите эту команду в чат")
+        await state.finish()
     except Exception as ex:
         await state.finish()
 

@@ -26,6 +26,9 @@ admin_functions_mkp = InlineKeyboardMarkup(row_width=2)
 change_password = InlineKeyboardButton("Изменить пароль", callback_data="change_password")
 list_of_group = InlineKeyboardButton("Список группы", callback_data="list_of_group")
 write_message = InlineKeyboardButton("Написать сообщение", callback_data="write_message")
+get_tag_menu = InlineKeyboardButton("К тегам", callback_data="start_tag_system")
+
+admin_functions_mkp.row(get_tag_menu)
 admin_functions_mkp.row(list_of_group, change_password)
 admin_functions_mkp.row(write_message)
 
