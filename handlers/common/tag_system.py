@@ -34,6 +34,8 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     logger.info("Tag system started")
     await callback_query.answer()
     await state.finish()
+
+    await state.update_data(view_mode = 'default')
     # update group_id data
     try:
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
@@ -117,6 +119,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
     elif not is_first_page and is_last_page:
         markup.add(previous_page)  
 
+    logger.info('Im here!')
     # ✉️
     folder_emoji = '📁'
     for tag in tags:
@@ -126,6 +129,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
                 callback_data=f"cts_swt:{tag[0]}:tag:1"
             ))
 
+    logger.info('message_text ' + message_text)
     try:
         await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                     message_id=callback_query.message.message_id,
@@ -134,7 +138,7 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
                                     parse_mode=ParseMode.MARKDOWN)
         logger.info("Tags list were sent to user")
     except Exception as ex:
-        logger.warning("Can not send a message to user with tags list")
+        logger.warning("Can not send a message to user with tags list || "+ str(ex))
         await bot.send_message(callback_query.from_user.id, INTERNAL_ERROR_MSG)
         await state.finish()
 
@@ -216,6 +220,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
     BUTTON_TAG_ID = "root" if tag_id == None else tag_id
     CHANGE_MODE_BTN = InlineKeyboardButton(CHANGE_MODE_TEXT, callback_data=f"cts_swt:{BUTTON_TAG_ID}:{CHANGED_MODE}:1")
 
+    BACK_BTN = InlineKeyboardButton('Отменить', callback_data="cancel_operation_tag")
+    MOVE_TAG_BTN = InlineKeyboardButton('Переместить тег', callback_data="move_tag")
+
     logger.info(f"get_message_common_info tag_id:{tag_id}, group id:{group_id}, mode:{mode}")
 
     # getting a current tag
@@ -223,8 +230,17 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
         message_text = "*Сейчас вы находитесь в корневом теге*"
         markup.add(cancel_btn)
 
-        # creating a button to change a view mode        
-        markup.add(CHANGE_MODE_BTN)
+        # creating a button to change a view mode    
+        # 🔴🔴🔴🔴🔴🔴 Первая проверка
+        async with state.proxy() as data:
+            if data['view_mode'] == 'default':
+                markup.add(CHANGE_MODE_BTN)
+                markup.add(MOVE_TAG_BTN)
+                logger.info("view_mode' == 'default")
+            else:
+                markup.add(BACK_BTN)
+                logger.info("view_mode' != 'default")
+        # markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
         try:
@@ -252,6 +268,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
         message_text = f"Сейчас вы находитесь в теге\n*{current_tag[2]}*:\n"
         markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
         
+        # 🔴🔴🔴🔴🔴🔴 
         markup.add(CHANGE_MODE_BTN)
         return False, message_text
 
@@ -270,9 +287,20 @@ async def cancel_tag_system(callback_query: types.CallbackQuery, state: FSMConte
 async def tag_system_not_available(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
 
+async def cancel_operation_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.update_data(view_mode = 'default')
+    logger.info('Сработала test_tag_func и view_mode = default')
+
+async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.update_data(view_mode = 'NOTdefault')
+    logger.info('Сработала move_tag')
+  
 
 def tag_system_handlers(dp: Dispatcher):
     dp.register_message_handler(button_imitation, commands=['tag_menu'])
     dp.register_callback_query_handler(cancel_tag_system, lambda c: c.data == "cancel_tag_system", state="*")
     dp.register_callback_query_handler(start, lambda c: c.data.startswith("start_tag_system"), state="*")
     dp.register_callback_query_handler(invoke_tag_system, lambda c: c.data.startswith("cts_swt"), state=States.PROCESS)
+
+    dp.register_callback_query_handler(cancel_operation_tag, lambda c: c.data == "cancel_operation_tag", state="*")
+    dp.register_callback_query_handler(move_tag, lambda c: c.data == "move_tag", state="*")
