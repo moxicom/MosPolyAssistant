@@ -188,7 +188,7 @@ async def tag_system_show_messages(callback_query: types.CallbackQuery, state: F
             InlineKeyboardButton(
                 f"{message_emoji}|{message[2]}",
                 # !!! SHOULD ADD A SEND MESSAGE FUNCTION
-                callback_data="qwerty"
+                callback_data=f"receive_message_by_id:{message[0]}"
             ))
 
     try:
