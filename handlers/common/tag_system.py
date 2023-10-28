@@ -119,7 +119,6 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
     elif not is_first_page and is_last_page:
         markup.add(previous_page)  
 
-    logger.info('Im here!')
     # ✉️
     folder_emoji = '📁'
     for tag in tags:
@@ -239,6 +238,8 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 logger.info("view_mode' == 'default")
             else:
                 markup.add(BACK_BTN)
+                if data['view_mode'] == 'move_tag':
+                    message_text += "\nВыберите тег для перемещения"
                 logger.info("view_mode' != 'default")
         # markup.add(CHANGE_MODE_BTN)
         return False, message_text
@@ -268,7 +269,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
         message_text = f"Сейчас вы находитесь в теге\n*{current_tag[2]}*:\n"
         markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
         
-        # 🔴🔴🔴🔴🔴🔴 
+        # 🔴🔴🔴🔴🔴🔴
         markup.add(CHANGE_MODE_BTN)
         return False, message_text
 
@@ -290,10 +291,16 @@ async def tag_system_not_available(callback_query: types.CallbackQuery, state: F
 async def cancel_operation_tag(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(view_mode = 'default')
     logger.info('Сработала test_tag_func и view_mode = default')
+    await invoke_tag_system(callback_query, state)
 
 async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.update_data(view_mode = 'NOTdefault')
+    await state.update_data(view_mode = 'move_tag')
     logger.info('Сработала move_tag')
+    await bot.edit_message_text(chat_id=callback_query.message.chat.id,
+                                    message_id=callback_query.message.message_id,
+                                    text="Выберите тег который вы хотите переместить")
+    await invoke_tag_system(callback_query, state)
+
   
 
 def tag_system_handlers(dp: Dispatcher):
