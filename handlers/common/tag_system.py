@@ -128,15 +128,10 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
             elif data['view_mode'] == 'move_tag':
                 callback_mode = f"move_tag:{tag[0]}:step_2"
             elif data['view_mode'] == 'move_tag_step_2':
-                logging.info('1')
-                logging.info(tag[0])
-                logging.info(data['moving_tag_id'])
                 if tag[0] == int(data['moving_tag_id']):
-                    logging.info('2')
                     continue
                 else:
                     callback_mode = f"cts_swt:{tag[0]}:tag:1"
-
 
             markup.add(
                 InlineKeyboardButton(
@@ -296,12 +291,11 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 markup.add(MOVE_TAG_BTN)
                 logger.info("view_mode' == 'default")
             else:
+                logger.info("view_mode' != 'default")
                 markup.add(BACK_BTN)
                 if data['view_mode'] == 'move_tag':
                     message_text += "\nВыберите тег для перемещения"
-                    logger.info("view_mode' == 'move_tag")
                 elif data['view_mode'] == 'move_tag_step_2':
-                    logger.info("view_mode' == 'move_tag_step_2")
                     message_text += "\nВыберите тег для вставки"
                     markup.add(PASTE_TAG_BTN)
         return False, message_text
