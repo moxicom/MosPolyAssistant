@@ -123,10 +123,20 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
     folder_emoji = '📁'
     for tag in tags:
         async with state.proxy() as data:
-            if data['view_mode'] == 'move_tag':
-                callback_mode = f"move_tag:{tag[0]}:step_2"
-            else:
+            if data['view_mode'] == 'default':
                 callback_mode = f"cts_swt:{tag[0]}:tag:1"
+            elif data['view_mode'] == 'move_tag':
+                callback_mode = f"move_tag:{tag[0]}:step_2"
+            elif data['view_mode'] == 'move_tag_step_2':
+                logging.info('1')
+                logging.info(tag[0])
+                logging.info(data['moving_tag_id'])
+                if tag[0] == int(data['moving_tag_id']):
+                    logging.info('2')
+                    continue
+                else:
+                    callback_mode = f"cts_swt:{tag[0]}:tag:1"
+
 
             markup.add(
                 InlineKeyboardButton(
@@ -246,7 +256,11 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 markup.add(BACK_BTN)
                 if data['view_mode'] == 'move_tag':
                     message_text += "\nВыберите тег для перемещения"
-                logger.info("view_mode' != 'default")
+                    logger.info("view_mode' == 'move_tag")
+                elif data['view_mode'] == 'move_tag_step_2':
+                    logger.info("view_mode' == 'move_tag_step_2")
+                    message_text += "\nВыберите тег для вставки"
+                    markup.add(PASTE_TAG_BTN)
         # markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
@@ -309,24 +323,30 @@ async def tag_system_not_available(callback_query: types.CallbackQuery, state: F
 
 async def cancel_operation_tag(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(view_mode = 'default')
-    logger.info('Сработала test_tag_func и view_mode = default')
+    logger.info('cancel_operation_tag | view_mode = default')
     await invoke_tag_system(callback_query, state)
 
 async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    parameters = callback_query.data.split(":")
+    parameters = callback_query.data.split(':')
 
-    if parameters[1] != "root":
+    if parameters[1] != 'root':
         tag_id = int(parameters[1])
     else:
         tag_id = None
         
-    if parameters[2] == "step_1":
+    if parameters[2] == 'step_1':
         logger.info('Сработала move_tag 1')
         await state.update_data(view_mode = 'move_tag')
         await invoke_tag_system(callback_query, state, tag_id=tag_id)
-    elif parameters[2] == "step_2":
+    elif parameters[2] == 'step_2':
         logger.info('Сработала move_tag 2')
         await state.update_data(view_mode = 'move_tag_step_2')
+        await state.update_data(moving_tag_id = tag_id)
+        await invoke_tag_system(callback_query, state)
+    elif parameters[2] == 'step_3':
+        logger.info('Завершен перенос тега. Далее работает функция для бд')
+
+        await state.update_data(view_mode = 'default')
         await invoke_tag_system(callback_query, state)
 
 
