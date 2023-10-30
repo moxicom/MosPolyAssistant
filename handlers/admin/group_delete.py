@@ -136,6 +136,17 @@ async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
         # Deleting the markup of the previous message
         group_id = data['group_id'] 
     try:
+        users = await db.fetch_users_in_group(group_id)
+        for user in users:
+            await bot.send_message(user[3], 
+                             'Данная группа удалена администратором. Для того чтобы вступить в новую группу введите /reg')
+    except Exception as ex:
+        await callback_query.answer(internal_error_msg)
+        logging.warning('|group_delete/delete_group_members| An error has occurred at sending notification to users: ' + str(ex))
+        await state.finish()
+        return
+
+    try:
         await db.delete_group_members_by_group_id(group_id)
         await db.delete_users_by_group_id(group_id)
         #await db.delete_images_by_message_id(message_id)
