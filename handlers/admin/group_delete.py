@@ -26,7 +26,7 @@ def cancel_button_markup():
 
 async def group_delete_start(callback_query: types.CallbackQuery, state: FSMContext):
     """Checking the administrator password. If true, starts the delete process."""
-    logging.info("|group_delete/group_delete_start| Проверка пароля начата")
+    logging.info("|group_delete/group_delete_start| Password verification started")
     markup = ReplyKeyboardRemove()
     # use answer_callback_query to stop button infinite load in Telegram client
     # await bot.answer_callback_query(callback_query.id)
