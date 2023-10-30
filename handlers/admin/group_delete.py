@@ -14,7 +14,7 @@ from handlers import general
 
 class States(StatesGroup):
     PASSWORD_CHECK = State()
-    CONFIRM = State()
+    CONFIRM_DELETE = State()
     DELETE_GROUP = State()
     
 
@@ -29,7 +29,7 @@ async def group_delete_start(callback_query: types.CallbackQuery, state: FSMCont
     logging.info("|group_delete/group_delete_start| Проверка пароля начата")
     markup = ReplyKeyboardRemove()
     # use answer_callback_query to stop button infinite load in Telegram client
-    await bot.answer_callback_query(callback_query.id)
+    # await bot.answer_callback_query(callback_query.id)
 
     try:
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
@@ -82,7 +82,8 @@ async def password_check(message: types.Message, state: FSMContext):
 
     try:
         if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[2]:
-            await confirm_message(message, state)
+            await States.CONFIRM_DELETE.set()
+            await group_delete_confirm_message(message, state)
         else:
             await message.answer('Пароль неверный. Удаление группы прекращено')
             await state.finish()
@@ -93,8 +94,8 @@ async def password_check(message: types.Message, state: FSMContext):
         await state.finish()
 
 
-async def confirm_message(message: types.Message, state: FSMContext):
-    """Call the confirm_message function to validate the group delete """
+async def group_delete_confirm_message(message: types.Message, state: FSMContext):
+    """Call the group_delete_confirm_message function to validate the group delete """
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(InlineKeyboardButton("Да", callback_data="admin-group_delete-confirm_msg_yes"))
     markup.add(InlineKeyboardButton("Нет", callback_data="admin-group_delete-confirm_msg_no"))
@@ -102,7 +103,7 @@ async def confirm_message(message: types.Message, state: FSMContext):
         await message.reply("Вы уверены что хотите удалить группу? (Все сообщения, теги, файлы будут удалены)", reply_markup=markup)
     except Exception as ex:
         await message.answer(internal_error_msg)
-        logging.warning('|group_delete/confirm_message| An error has occurred: ' + str(ex))
+        logging.warning('|group_delete/group_delete_confirm_message| An error has occurred: ' + str(ex))
         await state.finish()
         return
 
@@ -156,7 +157,7 @@ async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
 
 def group_delete_handlers(dp: Dispatcher):
     dp.register_message_handler(password_check, state=States.PASSWORD_CHECK)
-    dp.register_message_handler(confirm_message, state=States.CONFIRM)
+    dp.register_message_handler(group_delete_confirm_message, state=States.CONFIRM_DELETE)
     dp.register_message_handler(delete_group, state=States.DELETE_GROUP)
 
     # message text confirm result funcs
