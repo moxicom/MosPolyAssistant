@@ -511,3 +511,48 @@ async def fetch_message_by_id(id: int):
 # loop = asyncio.get_event_loop()
 # loop.run_until_complete(insert_groups_info(name='qwe', password='zxc'))
 # loop.run_until_complete(insert_users("qwe", 1, 22))
+
+async def insert_attachment(video=None, file=None, image=None, audio=None):
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table('attachments', metadata,
+                      Column('id', Integer, primary_key=True, autoincrement=True),
+                      Column('video', VARCHAR, nullable=True),
+                      Column('file', VARCHAR, nullable=True),
+                      Column('image', VARCHAR, nullable=True),
+                      Column('audio', VARCHAR, nullable=True))
+        insert_data = {
+            'video': video,
+            'file': file,
+            'image': image,
+            'audio': audio
+        }
+        insertStmt = table.insert().values(**insert_data)
+        await conn.execute(insertStmt)
+        await conn.commit()
+
+
+async def get_filled_attachment_by_id(id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table('attachments', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('video', VARCHAR, nullable=True),
+                      Column('file', VARCHAR, nullable=True),
+                      Column('image', VARCHAR, nullable=True),
+                      Column('audio', VARCHAR, nullable=True))
+        select_stmt = select([table]).where(table.c.id == id)
+        result = await conn.execute(select_stmt)
+        row = result.fetchone()
+
+        if row:
+            if row['video']:
+                return row['video']
+            elif row['file']:
+                return row['file']
+            elif row['image']:
+                return row['image']
+            elif row['audio']:
+                return row['audio']
+
+        return None
