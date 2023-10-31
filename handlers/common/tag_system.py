@@ -254,7 +254,8 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             # Basic functionality buttons
             if data['view_mode'] == 'default':
                 markup.add(CHANGE_MODE_BTN)
-                markup.add(MOVE_TAG_BTN)
+                if mode == TAG_MODE:
+                    markup.add(MOVE_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -301,7 +302,8 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             if data['view_mode'] == 'default':
                 markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
                 markup.add(CHANGE_MODE_BTN)
-                markup.add(MOVE_TAG_BTN)
+                if mode == TAG_MODE:
+                    markup.add(MOVE_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -337,12 +339,13 @@ async def cancel_operation_tag(callback_query: types.CallbackQuery, state: FSMCo
     await invoke_tag_system(callback_query, state)
 
 async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
+    
     parameters = callback_query.data.split(':')
-
     if parameters[1] != 'root':
         tag_id = int(parameters[1])
     else:
         tag_id = None
+
     # Selecting a tag to move    
     if parameters[2] == 'step_1':
         logger.info('move_tag step 1')
