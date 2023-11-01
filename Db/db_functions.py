@@ -2,7 +2,6 @@ from sqlalchemy.ext import asyncio as asyncio_ext
 from sqlalchemy.sql import select
 from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, BIGINT, and_
 from sqlalchemy.orm import declarative_base as base
-import asyncio
 import logging
 from sqlalchemy import update
 
@@ -61,7 +60,7 @@ async def fetch_users(tg_id: BIGINT):
         selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
-        print('----------------\n fetch_users result\n ', users, '\n-------------------')
+        logging.info('|Db/db_functions/fetch_users| result %s', users)
         return users
 
 
@@ -76,7 +75,7 @@ async def fetch_users_in_group(group_id: int):
         selectStmt = select(table).where(table.c.group_id == group_id)
         result = await conn.execute(selectStmt)
         users = result.fetchall()
-        print('----------------\n fetch_users_in_group result\n ', users, '\n-------------------')
+        logging.info('|Db/db_functions/fetch_users_in_group| result %s', users)
         return users
 
 
@@ -116,8 +115,7 @@ async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
         insertStmt = table.insert().values(name=group_name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
-        print('--------------' + 'groups info commited' + '------------')
-
+        logging.info('|Db/db_functions/insert_groups_info| groups info commited')
 
 async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
@@ -129,7 +127,7 @@ async def fetch_groups_info(group_name: VARCHAR):
         selectStmt = select(table).where(table.c.name == group_name)
         result = await conn.execute(selectStmt)
         group_info = result.fetchall()
-        print('--------------------------\n fetch_groups_info result = \n', group_info, '\n--------------------------')
+        logging.info('|Db/db_functions/fetch_groups_info| result %s', group_info)
         return group_info
 
 
@@ -143,8 +141,7 @@ async def fetch_group_info_by_id(group_id: int):
         selectStmt = select(table).where(table.c.id == group_id)
         result = await conn.execute(selectStmt)
         group_info = result.fetchone()
-        print('--------------------------\n fetch_group_info_by_id result = \n', group_info,
-              '\n--------------------------')
+        logging.info('|Db/db_functions/fetch_group_info_by_id| result %s', group_info)
         return group_info if group_info else None
 
 
@@ -170,7 +167,7 @@ async def change_group_info(id: int, field: str, new_value: str):
             update_stmt = table.update().where(table.c.id == id).values({field: new_value})
             await conn.execute(update_stmt)
             await conn.commit()
-            print('--------------' + 'group info changed' + '------------')
+            logging.info('|Db/db_functions/change_group_info| group info changed')
             return 0
 
         except:
@@ -225,7 +222,7 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
 
         result = await conn.execute(selectStmt)
         group_members = result.fetchall()
-        print('-' * 15 + '\n\t fetch_groups_members result = \n\t', group_members, '\n' + '-' * 15)
+        logging.info('|Db/db_functions/fetch_groups_members| result %s', group_members)
         return group_members
 
 async def delete_group_members_by_group_id(group_id: int):
