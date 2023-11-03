@@ -2,7 +2,7 @@ import logging
 import asyncio
 
 from config import bot, dp
-from handlers.common import tag_system, temp_messages
+from handlers.common import tag_system, messages_system
 from handlers.admin import change_password, list_of_group, basics, tags, group_delete
 from handlers import start_interaction, register, client
 
@@ -23,7 +23,7 @@ root_logger = logging.getLogger()
 root_logger.addHandler(file_handler)
 
 ### HANDLERS FOR TESTS
-temp_messages.temp_msg_handler(dp)
+messages_system.messages_system_handler(dp)
 ###
 
 ### BASIC HANDLERS FOR EVERYONE

@@ -11,5 +11,5 @@ async def send_message(callback_query: types.CallbackQuery):
     else:
          await bot.send_message(callback_query.from_user.id, "Данное сообщение предназначено для другой группы.")  
 
-def temp_msg_handler(dp: Dispatcher):
+def messages_system_handler(dp: Dispatcher):
     dp.register_callback_query_handler(send_message, lambda c: c.data.startswith("receive_message_by_id"), state="*")
