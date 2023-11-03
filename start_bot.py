@@ -6,9 +6,6 @@ from handlers.common import tag_system, temp_messages
 from handlers.admin import change_password, list_of_group, basics, tags, group_delete
 from handlers import start_interaction, register, client
 
-
-token = '<token>'
-
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s [%(levelname)s]: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
