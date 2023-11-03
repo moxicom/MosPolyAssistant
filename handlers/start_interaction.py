@@ -29,7 +29,7 @@ async def help_command(message: types.Message):
     if role == 2:
         await message.reply("Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
     elif role == 0:
-        await message.reply("Вот что ты можешь сделать")
+        await message.reply("Вот что ты можешь сделать", reply_markup=keyboards.client_functions_mkp)
     else:
         await bot.send_message(message.from_user.id, "что-то пошло не так")
 

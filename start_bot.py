@@ -1,13 +1,10 @@
 import logging
 import asyncio
-from handlers import start_interaction, register, client
 
 from config import bot, dp
-from handlers.common import tag_system
+from handlers.common import tag_system, messages_system
 from handlers.admin import change_password, list_of_group, basics, tags, group_delete
-
-
-token = '<token>'
+from handlers import start_interaction, register, client
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s [%(levelname)s]: %(message)s',
@@ -24,6 +21,10 @@ file_handler.setFormatter(formatter)
 # Get root handler and set handler for it
 root_logger = logging.getLogger()
 root_logger.addHandler(file_handler)
+
+### HANDLERS FOR TESTS
+messages_system.messages_system_handler(dp)
+###
 
 ### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)
