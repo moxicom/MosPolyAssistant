@@ -104,16 +104,16 @@ async def get_state_media_group(user_id_to_send: int, user_id_to_send_info: int,
     return media
 
 
-async def receive_message_with_media(message: types.Message, state: FSMContext):
-    '''Handler for receiving message with media'''
+async def receive_message_with_media(message: types.Message, state: FSMContext, reply_keyboard_text: str = "Получить медиа"):
+    '''Receives attachments from user, updates state with them, creates reply keyboard to continue message sending, ask user when each attachment were loaded'''
     await update_state_with_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Получить изображения"))
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton(reply_keyboard_text))
     await message.answer("Медиа загружено", reply_markup = keyboard)
     
 
-async def send_message(message: types.Message, state: FSMContext):
+async def send_state_media_group(message: types.Message, state: FSMContext):
     '''Handler for sending message with media'''
-    chat_id = message.chat.id
+    chat_id = message.from_user.id
     try:
         media = await get_state_media_group(message.from_user.id, message.from_user.id, state)
         if media.photos:
@@ -128,7 +128,7 @@ async def send_message(message: types.Message, state: FSMContext):
             videos = list(map(lambda video_id: InputMediaVideo(video_id), media.videos))
             await bot.send_video(chat_id, videos)
 
-        await bot.send_message(chat_id, "Медиа отправлено", reply_markup=ReplyKeyboardRemove())
+        await bot.send_message(chat_id, "Бот загрузил эти медиа", reply_markup=ReplyKeyboardRemove())
         await state.update_data(media_input=MediaInput())
     except Exception as ex:
         await message.answer(f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
@@ -137,11 +137,11 @@ async def send_message(message: types.Message, state: FSMContext):
     return
 
 
-def temp_attachments_handler(dp: Dispatcher):
-    dp.register_message_handler(temp_start, commands=['attachments'], state='*')
-    dp.register_message_handler(receive_message_with_media, state=Attachments_temp_state.ADDITION, content_types=[
-    types.ContentType.PHOTO,
-    types.ContentType.VIDEO,
-    types.ContentType.DOCUMENT,
-    ])
-    dp.register_message_handler(send_message, lambda message: message.text == "Получить изображения", state=Attachments_temp_state.ADDITION)
+# def temp_attachments_handler(dp: Dispatcher):
+#     dp.register_message_handler(temp_start, commands=['attachments'], state='*')
+#     dp.register_message_handler(receive_message_with_media, state=Attachments_temp_state.ADDITION, content_types=[
+#     types.ContentType.PHOTO,
+#     types.ContentType.VIDEO,
+#     types.ContentType.DOCUMENT,
+#     ])
+#     dp.register_message_handler(send_state_media_group, lambda message: message.text == "Получить медиа", state=Attachments_temp_state.ADDITION)

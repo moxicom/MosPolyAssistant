@@ -26,7 +26,6 @@ root_logger.addHandler(file_handler)
 
 ### HANDLERS FOR TESTS
 messages_system.messages_system_handler(dp)
-###
 
 ### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)

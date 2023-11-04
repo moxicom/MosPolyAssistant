@@ -3,11 +3,13 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
+
 from config import bot
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_functions as db
+import handlers.admin.tags_attachments as tags_attachments
 
 
 logger = logging.getLogger('[LOG]')
@@ -22,6 +24,7 @@ class States(StatesGroup):
     EXISTING_TAG = State()      #
     NEW_TAG = State()           #
     CONFIRM = State()           # receive the user callback of any suggestion
+    ATTACHMENTS = State()       # get the result of selecting an attachment
 
 
 async def start(callback_query: types.CallbackQuery, state: FSMContext):
@@ -332,8 +335,10 @@ async def confirm_tag_position(callback_query: types.CallbackQuery, state: FSMCo
     if current_state is States.EXISTING_TAG:
         logger.info("U are inside existing state, so tag_id=position_id:", current_state)
     
-    await confirm_full_message(callback_query.message, state)
+    # await confirm_full_message(callback_query.message, state)
+    await tags_attachments.ask_for_attachments_necessity(callback_query, state)
 
+### ATTACHMENTS ADDING PROCESS
 
 async def confirm_full_message(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
@@ -468,6 +473,17 @@ def tags_handlers(dp: Dispatcher):
     # tags hierarchy
     dp.register_callback_query_handler(invoke_tag_menu, lambda c: c.data.startswith("switch_to_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
     dp.register_callback_query_handler(confirm_tag_position, lambda c: c.data.startswith("submit_tag"), state=[States.CONFIRM, States.EXISTING_TAG])
+
+    # attachments
+    dp.register_callback_query_handler(tags_attachments.decline_attachments, lambda c: c.data == "no", state=States.ATTACHMENTS)
+    dp.register_callback_query_handler(tags_attachments.ask_for_attachments_message, lambda c: c.data == "yes", state=States.ATTACHMENTS)
+    dp.register_message_handler(tags_attachments.received_attachments_handler,
+                                content_types=[
+                                    types.ContentType.PHOTO,
+                                    types.ContentType.DOCUMENT,
+                                    types.ContentType.VIDEO],
+                                state=States.ATTACHMENTS)
+    dp.register_message_handler(tags_attachments.end_process_click_handler, lambda message: message.text == "Получить медиа", state=States.ATTACHMENTS)
 
     dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel_tag", state="*")  
 
