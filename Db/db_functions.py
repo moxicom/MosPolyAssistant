@@ -508,3 +508,4 @@ async def fetch_message_by_id(id: int):
 # loop = asyncio.get_event_loop()
 # loop.run_until_complete(insert_groups_info(name='qwe', password='zxc'))
 # loop.run_until_complete(insert_users("qwe", 1, 22))
+

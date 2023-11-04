@@ -2,9 +2,11 @@ import logging
 import asyncio
 
 from config import bot, dp
+
 from handlers.common import tag_system, messages_system
-from handlers.admin import change_password, list_of_group, basics, tags, group_delete
+from handlers.admin import change_password, list_of_group, basics, tags, group_delete, attachments
 from handlers import start_interaction, register, client
+token = '<token>'
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s [%(levelname)s]: %(message)s',
@@ -30,15 +32,16 @@ messages_system.messages_system_handler(dp)
 start_interaction.start_interactions_handlers(dp)
 register.register_handlers(dp)
 tag_system.tag_system_handlers(dp)
-###
+
 
 ### ADMIN HANDLERS
 basics.admin_basic_handlers(dp)
 change_password.change_password_handlers(dp)
 list_of_group.list_of_group_handlers(dp)
+attachments.temp_attachments_handler(dp)
 tags.tags_handlers(dp)
 group_delete.group_delete_handlers(dp)
-###
+
 
 ### CLIENT HANDLERS
 client.client_handlers(dp)
