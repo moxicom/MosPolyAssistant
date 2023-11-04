@@ -15,6 +15,7 @@ import handlers.admin.tags_attachments as tags_attachments
 logger = logging.getLogger('[LOG]')
 
 internal_error_msg = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
+ROOT_TAG_CODE = "admin-ExIsTinG-6260-tag"
 
 
 class States(StatesGroup):
@@ -348,7 +349,7 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
         except Exception as ex:
             # key tag is not given
             # !!!!!!!!!!!!! ADD HERE A FEATURE TO GET IF I CHOSE AN EXISTING TAG
-            tag='admin-ExIsTinG-6260-tag'
+            tag = ROOT_TAG_CODE
             await state.update_data(tag=tag)
 
         markup = InlineKeyboardMarkup(row_width=2)
@@ -359,7 +360,7 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
 
         try:
             await bot.delete_message(message.chat.id, message.message_id)
-            if tag != 'admin-ExIsTinG-6260-tag':
+            if tag != ROOT_TAG_CODE:
                 await bot.send_message(message.chat.id,
                                        f"Проверьте сообщение еще раз. Все верно?\n\nСообщение: {user_text}\nТег: {tag}\n",
                                         reply_markup=markup)
@@ -403,7 +404,7 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
 
         # Insert the new tag into the tags table
         tag_id = position_id
-        if tag not in existing_tags and tag != 'admin-ExIsTinG-6260-tag':
+        if tag not in existing_tags and tag != ROOT_TAG_CODE:
             await db.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
             tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
@@ -411,11 +412,13 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
         await db.insert_messages(group_id=group_id, title=user_text[:50], text=user_text, tag_id=tag_id, images=None,
                                  videos=None, files=None, created_at=datetime.now())
 
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено.")
+        await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено. Для вызова панели управления: > /help <")
         # The tg_id to exclude
         exclude_tg_id = callback_query.from_user.id
         tg_ids = await get_tg_ids_in_group(group_id, exclude_tg_id)
         for id in tg_ids:
+            if tag == ROOT_TAG_CODE:
+                tag = "Корневой тег"
             await bot.send_message(chat_id=id, text=tag + '\n' + user_text)
         await state.finish()
 

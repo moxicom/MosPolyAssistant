@@ -133,6 +133,7 @@ async def send_state_media_group(message: types.Message, state: FSMContext):
     except Exception as ex:
         await message.answer(f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
         await state.finish()
+    await state.finish()
     return
 
 
