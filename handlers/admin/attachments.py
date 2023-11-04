@@ -1,11 +1,17 @@
 import logging
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode
+from aiogram.types import ParseMode, InputMediaPhoto
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import ContentTypeFilter
+
+#
+from aiogram.dispatcher.handler import CancelHandler
+from typing import List, Union
+from aiogram.dispatcher.middlewares import BaseMiddleware
+#
 
 from Db import db_attachmments
 
@@ -54,53 +60,6 @@ async def send_message_template(state:FSMContext, user_id_to_send: int, user_id_
         await state.finish()
         return False
     return True
-
-
-
-# /// ONE MEDIA PER ONE MESSAGE HANDLERS ///
-
-# Мы с одним файлом работаем?? так же неправильно, надо исправлять
-# async def make_media_group(user_id_to_send: int, video_id=None, file_id=None, image_id=None, audio_id=None) -> list:
-#     '''Command handler for sending attachments to user with send exceptions handling'''
-#     media_group = []
-#     try:
-#         if video_id:
-#             media_group.append(types.InputMediaVideo(video_id)) # Это что за пиздец, надо проверить, работает ли это
-#         if file_id:
-#             media_group.append(types.InputMediaDocument(file_id))
-#         if image_id:
-#             media_group.append(types.InputMediaPhoto(image_id))
-#         if audio_id:
-#             media_group.append(types.InputMediaAudio(audio_id))
-#     except Exception as e:
-#         logging.warning(f'|attachments/make_media| An error has occurred: {e}')
-#         return []
-#     return media_group
-
-# Only for documents(some extentions of custom files)
-async def on_document_received(message: types.Message, state: FSMContext):
-    document = message.document
-    await state.update_data(document_id=document.file_id)
-
-
-# Only for compressed photos
-async def on_photo_received(message: types.Message, state: FSMContext):
-    photo = message.photo[-1]
-    await state.update_data(image_id=photo.file_id)
-
-
-# Only for compressed videos
-async def on_video_received(message: types.Message, state: FSMContext):
-    video = message.video
-    await state.update_data(video=video.file_id)
-
-
-# Only for audio FILES
-async def on_audio_received(message: types.Message, state: FSMContext):
-    audio = message.audio
-    await state.update_data(audio=audio.file_id)
-
-
 
 # /// MULTIPLE MEDIA PER ONE MESSAGE HANDLERS ///
 class MediaInput:
@@ -162,25 +121,72 @@ async def get_media_group(user_id_to_send: int, user_id_to_send_info: int, state
 async def receive_message(message: types.Message, state: FSMContext):
     await make_media_group(message.from_user.id, message.from_user.id, message, state)
     await state.finish()
-
     # photo_id = message.photo[-1].file_id
     # await bot.send_photo(message.chat.id, photo_id) 
-    # for photo in message.photo:
-    #     photo_id = photo.file_unique_id
-    #     print(photo_id)
-    #     # await bot.send_photo(message.chat.id, photo_id)
     
 async def send_message(message: types.Message, state: FSMContext):
     media = await get_media_group(message.from_user.id, message.from_user.id, state)
     await bot.send_media_group(message.chat.id, media)
 
 
+class AlbumMiddleware(BaseMiddleware):
+    """This middleware is for capturing media groups."""
+
+    album_data: dict = {}
+
+    def __init__(self, latency: Union[int, float] = 0.01):
+        """
+        You can provide custom latency to make sure
+        albums are handled properly in highload.
+        """
+        self.latency = latency
+        super().__init__()
+
+    async def on_process_message(self, message: types.Message, data: dict):
+        if not message.media_group_id:
+            return
+
+        try:
+            self.album_data[message.media_group_id].append(message)
+            raise CancelHandler()  # Tell aiogram to cancel handler for this group element
+        except KeyError:
+            self.album_data[message.media_group_id] = [message]
+            # await asyncio.sleep(self.latency)
+            message.conf["is_last"] = True
+            data["album"] = self.album_data[message.media_group_id]
+
+    async def on_post_process_message(self, message: types.Message, result: dict, data: dict):
+        """Clean up after handling our album."""
+        if message.media_group_id and message.conf.get("is_last"):
+            del self.album_data[message.media_group_id]
+
+
+async def handle_albums(message: types.Message):
+    """This handler will receive a complete album of any type."""
+    media_group = types.MediaGroup()
+    for obj in album:
+        if obj.photo:
+            file_id = obj.photo[-1].file_id
+        else:
+            file_id = obj[obj.content_type].file_id
+
+        try:
+            # We can also add a caption to each file by specifying `"caption": "text"`
+            media_group.attach({"media": file_id, "type": obj.content_type})
+        except ValueError:
+            return await message.answer("This type of album is not supported by aiogram.")
+
+    await message.answer_media_group(media_group)
+
+
 def temp_attachments_handler(dp: Dispatcher):
+    # dp.middleware.setup(AlbumMiddleware())
     dp.register_message_handler(temp_start, commands=['attachments'], state='*')
-    dp.register_message_handler(receive_message, state=Attachments_temp_state.ADDITION, content_types=[
-    types.ContentType.PHOTO,
-    types.ContentType.VIDEO,
-    types.ContentType.DOCUMENT,
-    types.ContentType.AUDIO
-    ])
-    dp.message_handler(send_message, state=Attachments_temp_state.ADDITION)
+    # dp.register_message_handler(receive_message, state=Attachments_temp_state.ADDITION, content_types=[
+    # types.ContentType.PHOTO,
+    # types.ContentType.VIDEO,
+    # types.ContentType.DOCUMENT,
+    # types.ContentType.AUDIO
+    # ])
+    # dp.message_handler(send_message, state=Attachments_temp_state.ADDITION)
+    dp.register_message_handler(handle_albums, content_types=types.ContentType.ANY)
