@@ -35,6 +35,7 @@ tag_system.tag_system_handlers(dp)
 basics.admin_basic_handlers(dp)
 change_password.change_password_handlers(dp)
 list_of_group.list_of_group_handlers(dp)
+attachments.temp_attachments_handler(dp)
 tags.tags_handlers(dp)
 group_delete.group_delete_handlers(dp)
 
