@@ -1,7 +1,7 @@
 import logging
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode, InputMediaPhoto
+from aiogram.types import ParseMode, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton, InputMediaDocument, InputMediaVideo
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -25,6 +25,7 @@ class Attachments_temp_state(StatesGroup):
     ADDITION = State()
     CONFIRMATION = State()
     SENDING = State()
+
 
 async def temp_start(message: types.Message, state: FSMContext):
     await message.answer('Добро пожаловать в админку по работе с аттачментами!\nОтправьте сообщение с любыми медиафайлами, которые хотите отправить пользователю.')
@@ -51,17 +52,6 @@ async def insert_attachment_command_handler(state: FSMContext, video=None, file=
     return True
 
 
-async def send_message_template(state:FSMContext, user_id_to_send: int, user_id_to_send_info:int, message: str, media_group: list = [], reply_markup: types.InlineKeyboardMarkup = None) -> bool:
-    '''Command handler for sending attachments to user with send exceptions handling'''
-    try:
-        pass
-    except Exception as e:
-        logging.warning(f'|attachments/send_message_template| An error has occurred: {e}')
-        await state.finish()
-        return False
-    return True
-
-# /// MULTIPLE MEDIA PER ONE MESSAGE HANDLERS ///
 class MediaInput:
     def __init__(self):
         self.photos = []
@@ -69,28 +59,24 @@ class MediaInput:
         self.videos = []
 
 
-async def make_media_group(user_id_to_send: int, user_id_to_send_info: int, message: types.Message, state: FSMContext):
-    media_input = MediaInput()
-    print("make_media_group : photos: ", message.photo)
+async def update_media_group(user_id_to_send_info: int, message: types.Message, state: FSMContext):
+    current_state = await state.get_data()
+    media_input = current_state.get("media_input") or MediaInput()
     try:
         if message.photo:
             photo_id = message.photo[-1].file_id
             media_input.photos.append(photo_id)
 
-        if message.document:
-            for document in message.document:
-                media_input.documents.append(message.document.file_id)
+        elif message.document:
+            print("document: ", message.document.file_id)
+            media_input.documents.append(message.document.file_id)
 
-        if message.video:
+        elif message.video:
             for video in message.video:
                 media_input.videos.append(message.video.file_id)
-
-        async with state.proxy() as data:
-            media_input_state = data.get('media_input')
-            media_input_state.photos.extend(media_input.photos)
-            media_input_state.photos = list(set(media_input.photos))
-            data["media_input"] = media_input_state
-            
+        print('media_input docs', media_input.documents )
+        await state.update_data(media_input=media_input)
+        
 
     except Exception as e:
         logging.warning(f'|attachments/make_media_group| An error has occurred: {e}')
@@ -102,91 +88,45 @@ async def get_media_group(user_id_to_send: int, user_id_to_send_info: int, state
     media = []
     try:
         async with state.proxy() as data:
-            photos = data['media_input'].photos
-            documents = data['media_input'].documents
-            videos = data['media_input'].videos
-        print("get_media_group : photos: ", photos)
+            media_group : MediaInput = data['media_input']
+            photos = media_group.photos
+            documents = media_group.documents
+            videos = media_group.videos
+            print('photos', photos)
+            print('documents', documents)
+            print('videos', videos)
         for photo in photos:
-            media.append(types.InputMediaPhoto(media=photo))
+            media.append(InputMediaPhoto(media=photo))
         for document_id in documents:
-            media.append(types.InputMediaDocument(media=document_id))
+            media.append(InputMediaDocument(media=document_id))
         for video_id in videos:
-            media.append(types.InputMediaVideo(media=video_id))
+            media.append(InputMediaVideo(media=video_id))
     except Exception as e:
         logging.warning(f'|attachments/get_media_group| An error has occurred: {e}')
         await state.finish()
     return media
 
 
-async def receive_message(message: types.Message, state: FSMContext):
-    await make_media_group(message.from_user.id, message.from_user.id, message, state)
-    await state.finish()
-    # photo_id = message.photo[-1].file_id
-    # await bot.send_photo(message.chat.id, photo_id) 
+async def receive_message_with_media(message: types.Message, state: FSMContext):
+    await update_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Получить изображения"))
+    await message.answer("Медиа загружено", reply_markup = keyboard)
     
+
 async def send_message(message: types.Message, state: FSMContext):
+    logging.info("sending message...")
     media = await get_media_group(message.from_user.id, message.from_user.id, state)
+    print("media", set(media))
     await bot.send_media_group(message.chat.id, media)
 
 
-class AlbumMiddleware(BaseMiddleware):
-    """This middleware is for capturing media groups."""
-
-    album_data: dict = {}
-
-    def __init__(self, latency: Union[int, float] = 0.01):
-        """
-        You can provide custom latency to make sure
-        albums are handled properly in highload.
-        """
-        self.latency = latency
-        super().__init__()
-
-    async def on_process_message(self, message: types.Message, data: dict):
-        if not message.media_group_id:
-            return
-
-        try:
-            self.album_data[message.media_group_id].append(message)
-            raise CancelHandler()  # Tell aiogram to cancel handler for this group element
-        except KeyError:
-            self.album_data[message.media_group_id] = [message]
-            # await asyncio.sleep(self.latency)
-            message.conf["is_last"] = True
-            data["album"] = self.album_data[message.media_group_id]
-
-    async def on_post_process_message(self, message: types.Message, result: dict, data: dict):
-        """Clean up after handling our album."""
-        if message.media_group_id and message.conf.get("is_last"):
-            del self.album_data[message.media_group_id]
-
-
-async def handle_albums(message: types.Message):
-    """This handler will receive a complete album of any type."""
-    media_group = types.MediaGroup()
-    for obj in album:
-        if obj.photo:
-            file_id = obj.photo[-1].file_id
-        else:
-            file_id = obj[obj.content_type].file_id
-
-        try:
-            # We can also add a caption to each file by specifying `"caption": "text"`
-            media_group.attach({"media": file_id, "type": obj.content_type})
-        except ValueError:
-            return await message.answer("This type of album is not supported by aiogram.")
-
-    await message.answer_media_group(media_group)
-
-
 def temp_attachments_handler(dp: Dispatcher):
-    # dp.middleware.setup(AlbumMiddleware())
     dp.register_message_handler(temp_start, commands=['attachments'], state='*')
-    # dp.register_message_handler(receive_message, state=Attachments_temp_state.ADDITION, content_types=[
-    # types.ContentType.PHOTO,
-    # types.ContentType.VIDEO,
-    # types.ContentType.DOCUMENT,
-    # types.ContentType.AUDIO
-    # ])
-    # dp.message_handler(send_message, state=Attachments_temp_state.ADDITION)
-    dp.register_message_handler(handle_albums, content_types=types.ContentType.ANY)
+    dp.register_message_handler(receive_message_with_media, state=Attachments_temp_state.ADDITION, content_types=[
+    types.ContentType.PHOTO,
+    types.ContentType.VIDEO,
+    types.ContentType.DOCUMENT,
+    types.ContentType.AUDIO,
+    ])
+
+    dp.register_message_handler(send_message, lambda message: message.text == "Получить изображения", state=Attachments_temp_state.ADDITION)
