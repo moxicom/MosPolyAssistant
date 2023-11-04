@@ -118,6 +118,7 @@ async def send_message(message: types.Message, state: FSMContext):
     media = await get_media_group(message.from_user.id, message.from_user.id, state)
     print("media", set(media))
     await bot.send_media_group(message.chat.id, media)
+    await state.update_data(media_input=MediaInput())
 
 
 def temp_attachments_handler(dp: Dispatcher):
