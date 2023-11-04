@@ -140,4 +140,4 @@ def client_handlers(dp: Dispatcher):
     dp.register_message_handler(get_subtags, state=TagState.sub_tag)
     dp.register_message_handler(get_message_by_id, commands=['get_message'])
     dp.register_message_handler(process_message_id_input, state=MessageIDState.message_id)
-    dp.register_callback_query_handler(callback=process_tag_callback, state="*")
+    # dp.register_callback_query_handler(callback=process_tag_callback, state="*")

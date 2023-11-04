@@ -25,16 +25,6 @@ file_handler.setFormatter(formatter)
 root_logger = logging.getLogger()
 root_logger.addHandler(file_handler)
 
-
-
-
-
-attachments.temp_attachments_handler(dp)
-
-
-
-
-
 ### BASIC HANDLERS FOR EVERYONE
 start_interaction.start_interactions_handlers(dp)
 register.register_handlers(dp)
