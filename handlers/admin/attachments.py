@@ -1,7 +1,7 @@
 import logging
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton, InputMediaDocument, InputMediaVideo
+from aiogram.types import ParseMode, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton, InputMediaDocument, InputMediaVideo, ReplyKeyboardRemove
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -59,7 +59,8 @@ class MediaInput:
         self.videos = []
 
 
-async def update_media_group(user_id_to_send_info: int, message: types.Message, state: FSMContext):
+async def update_state_with_media_group(user_id_to_send_info: int, message: types.Message, state: FSMContext):
+    '''Update state with media group'''
     current_state = await state.get_data()
     media_input = current_state.get("media_input") or MediaInput()
     try:
@@ -84,8 +85,9 @@ async def update_media_group(user_id_to_send_info: int, message: types.Message, 
     return
 
 
-async def get_media_group(user_id_to_send: int, user_id_to_send_info: int, state: FSMContext) -> list:
-    media = []
+async def get_state_media_group(user_id_to_send: int, user_id_to_send_info: int, state: FSMContext) -> MediaInput:
+    '''Get media group from state'''
+    media = MediaInput()
     try:
         async with state.proxy() as data:
             media_group : MediaInput = data['media_input']
@@ -95,12 +97,7 @@ async def get_media_group(user_id_to_send: int, user_id_to_send_info: int, state
             print('photos', photos)
             print('documents', documents)
             print('videos', videos)
-        for photo in photos:
-            media.append(InputMediaPhoto(media=photo))
-        for document_id in documents:
-            media.append(InputMediaDocument(media=document_id))
-        for video_id in videos:
-            media.append(InputMediaVideo(media=video_id))
+        media = media_group
     except Exception as e:
         logging.warning(f'|attachments/get_media_group| An error has occurred: {e}')
         await state.finish()
@@ -108,17 +105,35 @@ async def get_media_group(user_id_to_send: int, user_id_to_send_info: int, state
 
 
 async def receive_message_with_media(message: types.Message, state: FSMContext):
-    await update_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
+    '''Handler for receiving message with media'''
+    await update_state_with_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Получить изображения"))
     await message.answer("Медиа загружено", reply_markup = keyboard)
     
 
 async def send_message(message: types.Message, state: FSMContext):
-    logging.info("sending message...")
-    media = await get_media_group(message.from_user.id, message.from_user.id, state)
-    print("media", set(media))
-    await bot.send_media_group(message.chat.id, media)
-    await state.update_data(media_input=MediaInput())
+    '''Handler for sending message with media'''
+    chat_id = message.chat.id
+    try:
+        media = await get_state_media_group(message.from_user.id, message.from_user.id, state)
+        if media.photos:
+            photos = list(map(lambda photo_id: InputMediaPhoto(photo_id), media.photos))
+            await bot.send_media_group(chat_id, photos)
+
+        if media.documents:
+            documents = list(map(lambda document_id: InputMediaDocument(document_id), media.documents))
+            await bot.send_media_group(chat_id, documents)
+
+        if media.videos:
+            videos = list(map(lambda video_id: InputMediaVideo(video_id), media.videos))
+            await bot.send_video(chat_id, videos)
+
+        await bot.send_message(chat_id, "Медиа отправлено", reply_markup=ReplyKeyboardRemove())
+        await state.update_data(media_input=MediaInput())
+    except Exception as ex:
+        await message.answer(f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
+        await state.finish()
+    return
 
 
 def temp_attachments_handler(dp: Dispatcher):
@@ -127,7 +142,5 @@ def temp_attachments_handler(dp: Dispatcher):
     types.ContentType.PHOTO,
     types.ContentType.VIDEO,
     types.ContentType.DOCUMENT,
-    types.ContentType.AUDIO,
     ])
-
     dp.register_message_handler(send_message, lambda message: message.text == "Получить изображения", state=Attachments_temp_state.ADDITION)
