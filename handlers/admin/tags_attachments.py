@@ -30,7 +30,7 @@ async def ask_for_attachments_message(callback_query: types.CallbackQuery, state
 
 async def received_attachments_handler(message: types.Message, state: FSMContext):
     '''Receive attachments from user -> to learn more check function inside'''
-    await attachments.receive_message_with_media(message, state, reply_keyboard_text="Получить медиа")
+    await attachments.receive_message_with_media(message, state, reply_keyboard_text="Продолжить")
     
 
 async def end_process_click_handler (message: types.Message, state: FSMContext):
