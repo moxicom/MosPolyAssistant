@@ -345,12 +345,14 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
         user_text = data['user_text']
         try:
             tag = data['tag']
+            logger.info(f"|confirm_full_message| tag is given {tag}")
             # tag is given
         except Exception as ex:
             # key tag is not given
             # !!!!!!!!!!!!! ADD HERE A FEATURE TO GET IF I CHOSE AN EXISTING TAG
             tag = ROOT_TAG_CODE
-            await state.update_data(tag=tag)
+            data["tag"] = tag
+            logger.info(f"|confirm_full_message| tag is not given, so tag = {tag}")
 
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(InlineKeyboardButton("Да", callback_data="admin-tag-confirm_full_yes"),
@@ -483,7 +485,7 @@ def tags_handlers(dp: Dispatcher):
                                     types.ContentType.DOCUMENT,
                                     types.ContentType.VIDEO],
                                 state=States.ATTACHMENTS)
-    dp.register_message_handler(tags_attachments.end_process_click_handler, lambda message: message.text == "Получить медиа", state=States.ATTACHMENTS)
+    dp.register_message_handler(tags_attachments.end_process_click_handler, lambda message: message.text == "Продолжить", state=States.ATTACHMENTS)
 
     dp.register_callback_query_handler(cancel, lambda c: c.data == "cancel_tag", state="*")  
 

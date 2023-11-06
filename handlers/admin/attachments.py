@@ -61,28 +61,33 @@ class MediaInput:
 
 async def update_state_with_media_group(user_id_to_send_info: int, message: types.Message, state: FSMContext):
     '''Update state with media group'''
-    current_state = await state.get_data()
-    media_input = current_state.get("media_input") or MediaInput()
+    media_input = await state.get_data()
+    media_input = media_input.get('media_input')
+    # print('|attachments/update_state_with_media_group| - media_input \n\t', media_input)
+    if not media_input:
+        logging.info(f'|attachments/update_state_with_media_group| MediaInput is None, creating new one')
+        media_input = MediaInput()
+    # print('media_input images', media_input.photos )
     try:
         if message.photo:
             photo_id = message.photo[-1].file_id
             media_input.photos.append(photo_id)
 
         elif message.document:
-            print("document: ", message.document.file_id)
+            # print("document: ", message.document.file_id)
             media_input.documents.append(message.document.file_id)
 
         elif message.video:
             for video in message.video:
                 media_input.videos.append(message.video.file_id)
-        print('media_input docs', media_input.documents )
+        # print('media_input docs', media_input.documents )
         await state.update_data(media_input=media_input)
+        # print(await state.get_data())
         
 
     except Exception as e:
-        logging.warning(f'|attachments/make_media_group| An error has occurred: {e}')
+        logging.warning(f'|attachments/update_state_with_media_group| An error has occurred: {e}')
         await state.finish()
-    return
 
 
 async def get_state_media_group(user_id_to_send: int, user_id_to_send_info: int, state: FSMContext) -> MediaInput:
@@ -108,7 +113,7 @@ async def receive_message_with_media(message: types.Message, state: FSMContext, 
     '''Receives attachments from user, updates state with them, creates reply keyboard to continue message sending, ask user when each attachment were loaded'''
     await update_state_with_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton(reply_keyboard_text))
-    await message.answer("Медиа загружено", reply_markup = keyboard)
+    await bot.send_message(message.from_user.id, "Медиа загружено", reply_markup = keyboard)
     
 
 async def send_state_media_group(message: types.Message, state: FSMContext):
@@ -133,7 +138,7 @@ async def send_state_media_group(message: types.Message, state: FSMContext):
     except Exception as ex:
         await message.answer(f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
         await state.finish()
-    await state.finish()
+    # await state.finish() ### !!!!!!!
     return
 
 
