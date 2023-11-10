@@ -450,6 +450,32 @@ async def process_callback_actual_existing_tag(callback_query: types.CallbackQue
     await confirm_tag(callback_query.message, state)
 
 
+async def delete_message_by_tag_id(tag_id):
+    try:
+        messages = await db.fetch_messages_by_tag(tag_id=tag_id)
+        for message in messages:
+            # Удаление атачментов из бд
+            # ЖДУ НОВУЮ СХЕМУ БД :(
+                
+            # Удаление самого сообщения
+            await db.delete_messages_by_id(message[0])
+    except Exception as ex:
+        logger.warning('|admin/tags/delete_message_by_tag_id| message deletion error ' + str(ex))
+    
+
+async def delete_tag(tag_id):
+    """Recursive tag removal"""
+    try:
+        # Удаляем сообщения зависимых тегов и их самих
+        dependent_tags = await db.get_tags_by_parent_id(tag_id)
+        for dependent_tag in dependent_tags:
+            await delete_tag(dependent_tag[0])
+
+        # Удаляем сообщения данного тега
+        delete_message_by_tag_id(tag_id=tag_id)
+    except Exception as ex:
+        logger.warning('|admin/tags/delete_tag| Tag deletion error ' + str(ex))
+
 
 
 def tags_handlers(dp: Dispatcher):

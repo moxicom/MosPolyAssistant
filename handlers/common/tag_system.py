@@ -9,7 +9,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_functions as db
 from Db import paginator_db_function as paginator
-
+from handlers.admin import tags
 
 logger = logging.getLogger('[LOG-TagSystem]')
 INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
@@ -262,7 +262,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             if data['view_mode'] == 'default':
                 markup.add(CHANGE_MODE_BTN)
                 if mode == TAG_MODE:
-                    markup.add(MOVE_TAG_BTN)
+                    markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -276,6 +276,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                     logger.info("view_mode' == 'move_tag_step_2")
                     message_text += "\nВыберите тег для вставки"
                     markup.add(PASTE_TAG_BTN)
+                # Delete tags
+                elif data['view_mode'] == 'delete_tag':
+                    message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"    
         # markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
@@ -323,6 +326,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 elif data['view_mode'] == 'move_tag_step_2':
                     message_text += "\nВыберите тег для вставки"
                     markup.add(PASTE_TAG_BTN)
+                # Delete tags
                 elif data['view_mode'] == 'delete_tag':
                     message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"
         return False, message_text
@@ -398,6 +402,9 @@ async def delete_tag(callback_query: types.CallbackQuery, state: FSMContext):
     elif parameters[2] == 'delete':
         # start delete
         logger.info('|tag_system/delete_tag| tag deleting has started')
+        await tags.delete_tag(tag_id=tag_id)
+        await state.update_data(view_mode = 'default')
+        await invoke_tag_system(callback_query, state)
 
 def tag_system_handlers(dp: Dispatcher):
     dp.register_message_handler(button_imitation, commands=['tag_menu'])
