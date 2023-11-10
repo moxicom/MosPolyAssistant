@@ -36,13 +36,13 @@ async def createTable():
 
 
 ########################### users #######################
-async def insert_users(name: VARCHAR, group_id: int, tg_id: BIGINT):
+async def insert_users(name: VARCHAR, group_id: BIGINT, tg_id: BIGINT):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR),
-                      Column('group_id', Integer),
+                      Column('group_id', BIGINT),
                       Column('tg_id', BIGINT))
         insertStmt = table.insert().values(name=name, group_id=group_id, tg_id=tg_id)
         await conn.execute(insertStmt)
@@ -53,9 +53,9 @@ async def fetch_users(tg_id: BIGINT):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR),
-                      Column('group_id', Integer),
+                      Column('group_id', BIGINT),
                       Column('tg_id', BIGINT))
         selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
@@ -64,13 +64,13 @@ async def fetch_users(tg_id: BIGINT):
         return users
 
 
-async def fetch_users_in_group(group_id: int):
+async def fetch_users_in_group(group_id: BIGINT):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR),
-                      Column('group_id', Integer),
+                      Column('group_id', BIGINT),
                       Column('tg_id', BIGINT))
         selectStmt = select(table).where(table.c.group_id == group_id)
         result = await conn.execute(selectStmt)
@@ -83,9 +83,9 @@ async def delete_users(tg_id: BIGINT):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR),
-                      Column('group_id', Integer),
+                      Column('group_id', BIGINT),
                       Column('tg_id', BIGINT))
         deleteStmt = table.delete().where(table.c.tg_id == tg_id)
         await conn.execute(deleteStmt)
@@ -95,9 +95,9 @@ async def delete_users_by_group_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR),
-                      Column('group_id', Integer),
+                      Column('group_id', BIGINT),
                       Column('tg_id', BIGINT))
         deleteStmt = table.delete().where(table.c.group_id == group_id)
         await conn.execute(deleteStmt)
@@ -109,7 +109,7 @@ async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR(50)),
                       Column('password', VARCHAR))
         insertStmt = table.insert().values(name=group_name, password=password)
@@ -121,7 +121,7 @@ async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR(50)),
                       Column('password', VARCHAR))
         selectStmt = select(table).where(table.c.name == group_name)
@@ -135,7 +135,7 @@ async def fetch_group_info_by_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR(50)),
                       Column('password', VARCHAR))
         selectStmt = select(table).where(table.c.id == group_id)
@@ -150,7 +150,7 @@ async def change_group_info(id: int, field: str, new_value: str):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('groups_info', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR(20)),
                       Column('password', VARCHAR(20))
                       )
@@ -177,7 +177,7 @@ async def delete_group_info_by_group_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('groups_info', metadata,
-                      Column('id', Integer, primary_key=True),
+                      Column('id', BIGINT, primary_key=True),
                       Column('name', VARCHAR(20)),
                       Column('password', VARCHAR(20))
                       )
@@ -246,10 +246,10 @@ async def fetch_tags(group_id: int):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         selectStmt = select(table)
         result = await conn.execute(selectStmt)
         rows = result.fetchall()
@@ -260,10 +260,10 @@ async def get_tag_id_by_name(tag_name: str, group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('tags', metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
 
         select_stmt = select(table).where(and_(table.c.name == tag_name, table.c.group_id == group_id))
         result = await conn.execute(select_stmt)
@@ -280,10 +280,10 @@ async def get_tags_by_parent_id(parent_id: int, group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('tags', metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         select_stmt = select(table).where(and_(table.c.parent_id == parent_id, table.c.group_id == group_id))
         result = await conn.execute(select_stmt)
         tags = result.fetchall()
@@ -293,10 +293,10 @@ async def insert_tags(group_id: int, name: str, parent_id: int):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         insertStmt = table.insert().values(group_id=group_id, name=name, parent_id=parent_id)
         await conn.execute(insertStmt)
         await conn.commit()
@@ -307,10 +307,10 @@ async def fetch_tag_by_id(current_tag_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         selectStmt = select(table).where(table.c.id == current_tag_id)
         result = await conn.execute(selectStmt)
         tag = result.fetchone()
@@ -322,10 +322,10 @@ async def fetch_tag_by_id_group_id(current_tag_id: int, group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         selectStmt = select(table).where(and_(table.c.id == current_tag_id, table.c.group_id == group_id))
         result = await conn.execute(selectStmt)
         tag = result.fetchone()
@@ -336,10 +336,10 @@ async def fetch_tag_by_name(group_id: int, name: str):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         selectStmt = select(table).where(table.c.group_id == group_id, table.c.name == name)
         result = await conn.execute(selectStmt)
         tag = result.fetchone()
@@ -349,11 +349,24 @@ async def delete_tags_by_group_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('name', VARCHAR),
-                      Column('parent_id', Integer))
+                      Column('parent_id', BIGINT))
         deleteStmt = table.delete().where(table.c.group_id == group_id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_tags_by_group_id| complited")
+
+async def delete_tags_by_id(id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
+                      Column('name', VARCHAR),
+                      Column('parent_id', BIGINT))
+        deleteStmt = table.delete().where(table.c.id == id)
         await conn.execute(deleteStmt)
         await conn.commit()
         logging.info("|Db/db_functions/delete_tags_by_group_id| complited")
@@ -365,11 +378,11 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("messages", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('title', VARCHAR),
                       Column('text', VARCHAR),
-                      Column('tag_id', Integer),
+                      Column('tag_id', BIGINT),
                       Column('images', VARCHAR),
                       Column('videos', VARCHAR),
                       Column('files', VARCHAR),
@@ -379,15 +392,54 @@ async def insert_messages(group_id: int, title: str, text: str, tag_id: int, ima
         await conn.execute(insertStmt)
         await conn.commit()
 
+async def fetch_messages_by_tag(tag_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("messages", metadata,
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
+                      Column('title', VARCHAR),
+                      Column('text', VARCHAR),
+                      Column('tag_id', BIGINT),
+                      Column('images', VARCHAR),
+                      Column('videos', VARCHAR),
+                      Column('files', VARCHAR),
+                      Column('created_at', Date))
+        selectStmt = select(table).where(table.c.tag_id == tag_id)
+        result = await conn.execute(selectStmt)
+        messages = result.fetchall()
+        logging.info("|Db/db_functions/fetch_messages_by_tag| complited")
+        return messages
+
+async def delete_messages_by_id(id: int):
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table("messages", metadata,
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
+                      Column('title', VARCHAR),
+                      Column('text', VARCHAR),
+                      Column('tag_id', BIGINT),
+                      Column('images', VARCHAR),
+                      Column('videos', VARCHAR),
+                      Column('files', VARCHAR),
+                      Column('created_at', Date))
+        
+        deleteStmt = table.delete().where(table.c.id == id)
+
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_messages_by_id| complited")
+
 async def delete_messages_by_group_id(group_id: int):
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("messages", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
                       Column('title', VARCHAR),
                       Column('text', VARCHAR),
-                      Column('tag_id', Integer),
+                      Column('tag_id', BIGINT),
                       Column('images', VARCHAR),
                       Column('videos', VARCHAR),
                       Column('files', VARCHAR),
@@ -416,23 +468,6 @@ async def delete_images_by_message_id(message_id: int):
 
 
 ########################### CLIENT ###########################
-async def fetch_messages_by_tag(group_id: int, tag_id: int):
-    async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("messages", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
-                      Column('title', VARCHAR),
-                      Column('text', VARCHAR),
-                      Column('tag_id', Integer),
-                      Column('images', VARCHAR),
-                      Column('videos', VARCHAR),
-                      Column('files', VARCHAR),
-                      Column('created_at', Date))
-        selectStmt = select(table).where(table.c.group_id == group_id, table.c.tag_id == tag_id)
-        result = await conn.execute(selectStmt)
-        messages = result.fetchall()
-        return messages
 
 
 async def fetch_main_tags(group_id: int):
