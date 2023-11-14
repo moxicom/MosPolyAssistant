@@ -6,6 +6,7 @@ from config import bot, dp
 from handlers.common import tag_system, messages_system
 from handlers.admin import change_password, list_of_group, basics, tags, group_delete, attachments
 from handlers import start_interaction, register, client
+from handlers.client_handlers import leave_group 
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s [%(levelname)s]: %(message)s',
@@ -41,6 +42,7 @@ group_delete.group_delete_handlers(dp)
 
 
 ### CLIENT HANDLERS
+leave_group.leave_group_handlers(dp)
 client.client_handlers(dp)
 ###
 

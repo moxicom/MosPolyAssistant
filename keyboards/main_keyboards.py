@@ -33,7 +33,8 @@ admin_functions_mkp.row(write_message, group_delete)
 
 client_functions_mkp = InlineKeyboardMarkup(row_width=2)
 get_tag_menu = InlineKeyboardButton("К тегам", callback_data="start_tag_system")
-client_functions_mkp.row(get_tag_menu)
+leave_group_btn = InlineKeyboardButton("Покинуть группу", callback_data="leave_group_start")
+client_functions_mkp.row(get_tag_menu, leave_group_btn)
 
 
 def get_tag_keyboard(tag_id):
