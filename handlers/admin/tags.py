@@ -29,7 +29,6 @@ class States(StatesGroup):
 
 async def start(callback_query: types.CallbackQuery, state: FSMContext):
     """Starts message adding process.Ask user for text of message"""
-    markup = ReplyKeyboardRemove()
     logger.info("STARTED ADDING NEW MESSAGE")
     await state.finish()
     # use answer_callback_query to stop button infinite load in Telegram client

@@ -79,7 +79,7 @@ async def fetch_users_in_group(group_id: int):
         return users
 
 
-async def delete_users(tg_id: BIGINT):
+async def delete_user(tg_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
         table = Table('users', metadata,
@@ -90,6 +90,8 @@ async def delete_users(tg_id: BIGINT):
         deleteStmt = table.delete().where(table.c.tg_id == tg_id)
         await conn.execute(deleteStmt)
         await conn.commit()
+        logging.info(f'|Db/db_functions/delete_user| user with tg_id {tg_id} deleted')
+
 
 async def delete_users_by_group_id(group_id: int):
     async with engine.connect() as conn:
@@ -173,6 +175,7 @@ async def change_group_info(id: int, field: str, new_value: str):
         except:
             return -1
 
+
 async def delete_group_info_by_group_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -225,6 +228,7 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
         logging.info('|Db/db_functions/fetch_groups_members| result %s', group_members)
         return group_members
 
+
 async def delete_group_members_by_group_id(group_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -238,6 +242,21 @@ async def delete_group_members_by_group_id(group_id: int):
         await conn.execute(deleteStmt)
         await conn.commit()
         logging.info("|Db/db_functions/delete_group_members_by_group_id| complited")
+
+
+async def delete_group_member(id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("groups_members", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('member_id', Integer),
+                      Column('group_id', Integer),
+                      Column('role', Integer))
+
+        deleteStmt = table.delete().where(table.c.member_id == id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_functions/delete_group_member| complited")
 
 
 ########################### tags ########################
@@ -399,6 +418,7 @@ async def delete_messages_by_group_id(group_id: int):
         await conn.commit()
         logging.info("|Db/db_functions/delete_messages_by_group_id| complited")
 
+
 ########################### images ########################
 
 async def delete_images_by_message_id(message_id: int):
@@ -448,6 +468,7 @@ async def fetch_main_tags(group_id: int):
         tags = result.fetchall()
         return tags
 
+
 async def fetch_sub_tags(parent_id: int):
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -460,6 +481,7 @@ async def fetch_sub_tags(parent_id: int):
         result = await conn.execute(selectStmt)
         tags = result.fetchall()
         return tags
+
 
 async def fetch_message_by_id(id: int):
     async with engine.connect() as conn:
@@ -479,6 +501,7 @@ async def fetch_message_by_id(id: int):
         message = result.fetchone()
         return message
     
+
 # async def fetch_users(group_id: int):
 #     async with engine.connect() as conn:
 #         metadata = MetaData()
