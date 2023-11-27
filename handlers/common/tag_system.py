@@ -7,9 +7,8 @@ from config import bot
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
-from Db import db_functions as db
+from Db import db_tags as db_tags
 from Db import paginator_db_function as paginator
-
 
 logger = logging.getLogger('[LOG-TagSystem]')
 INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
@@ -273,7 +272,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
         return False, message_text
     else:
         try:
-            current_tag = await db.fetch_tag_by_id_group_id(tag_id, group_id)
+            current_tag = await db_tags.fetch_tag_by_id_group_id(tag_id, group_id)
             logger.info("Got current tag")
         except Exception as ex:
             logger.warning("Can not get current tag by id")

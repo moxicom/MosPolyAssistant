@@ -8,7 +8,11 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 
 from config import bot
 from keyboards import main_keyboards as keyboards
-from Db import db_functions as db
+from Db import db_groups_info as db_groups_info
+from Db import db_tags as db_tags
+from Db import db_users as db_users
+from Db import db_groups_members as db_groups_members
+from Db import db_messages as db_messages
 from handlers import general
 
 
@@ -71,7 +75,7 @@ async def password_check(message: types.Message, state: FSMContext):
         await state.update_data(group_id = group_id)
         logging.info("|group_delete/password_check| Updated data with `group_id`")
 
-        group_info_fetch = await db.fetch_group_info_by_id(group_id)
+        group_info_fetch = await db_groups_info.fetch_group_info_by_id(group_id)
         logging.info('|group_delete/password_check| Password_check to delete group %s', group_info_fetch)
         
     except Exception as ex:
@@ -137,7 +141,7 @@ async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
         # Deleting the markup of the previous message
         group_id = data['group_id'] 
     try:
-        users = await db.fetch_users_in_group(group_id)
+        users = await db_users.fetch_users_in_group(group_id)
         for user in users:
             await bot.send_message(user[3], 
                              'Данная группа удалена администратором. Для того чтобы вступить в новую группу введите /reg')
@@ -148,12 +152,12 @@ async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
         return
 
     try:
-        await db.delete_group_members_by_group_id(group_id)
-        await db.delete_users_by_group_id(group_id)
+        await db_groups_members.delete_group_members_by_group_id(group_id)
+        await db_users.delete_users_by_group_id(group_id)
         #await db.delete_images_by_message_id(message_id)
-        await db.delete_messages_by_group_id(group_id)
-        await db.delete_tags_by_group_id(group_id)
-        await db.delete_group_info_by_group_id(group_id)
+        await db_messages.delete_messages_by_group_id(group_id)
+        await db_tags.delete_tags_by_group_id(group_id)
+        await db_groups_info.delete_group_info_by_group_id(group_id)
     except Exception as ex:
         await callback_query.answer(internal_error_msg)
         logging.warning('|group_delete/delete_group_members| An error has occurred: ' + str(ex))

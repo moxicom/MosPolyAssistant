@@ -7,7 +7,9 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from keyboards import main_keyboards as keyboards
-from Db import db_functions as db
+from Db import db_groups_info as db_groups_info
+from Db import db_users as db_users
+from Db import db_groups_members as db_groups_members
 from handlers import general
 
 
@@ -100,7 +102,7 @@ async def user_group_set(message: types.Message, state: FSMContext):  # FSM grou
     async with state.proxy() as data:
         if data['role'] == '0':
             try:
-                fetch = await db.fetch_groups_info(group_name=message.text)
+                fetch = await db_groups_info.fetch_groups_info(group_name=message.text)
                 if len(fetch) != 0:
                     data['group'] = message.text
                     await message.reply('Группа найдена, введите пароль.', reply_markup=keyboards.reg_move_mkp)
@@ -115,7 +117,7 @@ async def user_group_set(message: types.Message, state: FSMContext):  # FSM grou
                 await state.finish()
         elif data['role'] == '2':
             try:
-                fetch = await db.fetch_groups_info(group_name=message.text)
+                fetch = await db_groups_info.fetch_groups_info(group_name=message.text)
                 if len(message.text) > 255:
                     await message.reply("Данное имя слишком длинное (больше 255 символов), введите корректное название.")
                     await FSMregister.group.set()    
@@ -143,15 +145,15 @@ async def user_password_check(message: types.Message, state: FSMContext):  # FSM
     async with state.proxy() as data:
         if data['role'] == '0':
             try:
-                group_info_fetch = await db.fetch_groups_info(group_name=data['group'])
+                group_info_fetch = await db_groups_info.fetch_groups_info(group_name=data['group'])
                 logging.info('|register/user_password_check| User_password_check (role 0) %s', group_info_fetch[0])
                 if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
                     await message.answer('Пароль верный')
                     # Saving information in the database about new user
                     await message.answer(f'{data["name"]} {data["group"]}')
-                    await db.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
-                    user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
-                    await db.insert_groups_members(member_id=user_id, group_id=group_info_fetch[0][0],
+                    await db_users.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
+                    user_id = (await db_users.fetch_users(tg_id=message.from_user.id))[0][0]
+                    await db_groups_members.insert_groups_members(member_id=user_id, group_id=group_info_fetch[0][0],
                                                    role=int(data['role']))
                     await state.finish()
                 else:
@@ -179,13 +181,13 @@ async def user_password_repeating(message: types.Message, state: FSMContext):
             try: 
                 # Saving information in the database about new group and user
                 data['password'] = str(hashlib.sha256(message.text.encode()).hexdigest())
-                await db.insert_groups_info(group_name=data['group'], password=data['password'])
+                await db_groups_info.insert_groups_info(group_name=data['group'], password=data['password'])
 
-                group_id = (await db.fetch_groups_info(group_name=data['group']))[0][0]
-                await db.insert_users(name=data['name'], group_id=group_id, tg_id=message.from_user.id)
+                group_id = (await db_groups_info.fetch_groups_info(group_name=data['group']))[0][0]
+                await db_users.insert_users(name=data['name'], group_id=group_id, tg_id=message.from_user.id)
 
-                user_id = (await db.fetch_users(tg_id=message.from_user.id))[0][0]
-                await db.insert_groups_members(member_id=user_id, group_id=group_id, role=int(data['role']))
+                user_id = (await db_users.fetch_users(tg_id=message.from_user.id))[0][0]
+                await db_groups_members.insert_groups_members(member_id=user_id, group_id=group_id, role=int(data['role']))
 
                 logging.info('|register/user_password_repeating| User_password_repeating finish ' + data['name'] + ' ' + data['password'])
 

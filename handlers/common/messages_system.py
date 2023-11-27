@@ -1,11 +1,11 @@
 
 from aiogram import Dispatcher, types
-from Db import db_functions as db
+from Db import db_client as db_client
 from config import bot
 
 async def send_message(callback_query: types.CallbackQuery):
     message_id = int(callback_query.data.split(":")[1])
-    msg = await db.fetch_message_by_id(message_id)
+    msg = await db_client.fetch_message_by_id(message_id)
     if msg: 
         await bot.send_message(callback_query.from_user.id, f"Заголовок: {msg.title}\nТекст: {msg.text}")
     else:

@@ -9,7 +9,6 @@ from config import bot
 
 
 from handlers import general
-from Db import db_functions as db
 import handlers.admin.tags as tags
 import handlers.admin.attachments as attachments
 
