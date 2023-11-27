@@ -11,7 +11,7 @@ from aiogram.types import ParseMode
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import bot
 from keyboards import main_keyboards as keyboards
-from Db import db_functions as db
+from Db import db_groups_info as db_groups_info
 from handlers import general
 
 
@@ -64,7 +64,7 @@ async def process_second_word(message: types.Message, state: FSMContext):
             if first_word == second_word:
                 password = str(hashlib.sha256(second_word.encode()).hexdigest())
                 group_id = await general.get_group_id_by_tg_id(tg_id=message.from_user.id)
-                await db.change_group_info(id=group_id, field='password', new_value=password)
+                await db_groups_info.change_group_info(id=group_id, field='password', new_value=password)
                 await message.reply("Пароль успешно изменен")
                 await state.finish()
             else:

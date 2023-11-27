@@ -12,7 +12,8 @@ from typing import List, Union
 from aiogram.dispatcher.middlewares import BaseMiddleware
 
 from config import bot
-from Db import db_functions as db
+from Db import db_users as db_users
+from Db import db_groups_members as db_groups_members
 
 
 logging.basicConfig(level=logging.INFO)
@@ -42,9 +43,9 @@ async def leave_group_accept(callback_query: types.CallbackQuery, state: FSMCont
     await callback_query.answer()
     try:
         tg_id = callback_query.from_user.id
-        id = await db.fetch_users(tg_id)
-        await db.delete_group_member(id[0][0])
-        await db.delete_user(tg_id)
+        id = await db_users.fetch_users(tg_id)
+        await db_groups_members.delete_group_member(id[0][0])
+        await db_users.delete_user(tg_id)
         await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     except Exception as ex:
         logging.warning(f"leave_group_accept: {ex}")

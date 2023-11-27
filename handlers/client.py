@@ -6,7 +6,9 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from keyboards import main_keyboards as keyboards
-from Db import db_functions as db
+from Db import db_users as db_users
+from Db import db_client as db_client
+from Db import db_tags as db_tags
 from handlers import general
 
 
@@ -23,8 +25,8 @@ async def get_maintags(message: types.Message, state: FSMContext):
     if not users:
         await message.reply("Вы не состоите в группе.")
         return
-    users = await db.fetch_users(message.from_user.id)
-    tags = await db.fetch_main_tags(users[0].group_id)
+    users = await db_users.fetch_users(message.from_user.id)
+    tags = await db_client.fetch_main_tags(users[0].group_id)
     if(len(tags) <= 0):
         await message.reply("Тэги не найдены.")
     tag_message = "Главные теги:\n" + "\n".join(f"{i+1}. {tag.name}" for i, tag in enumerate(tags)) 
@@ -39,7 +41,7 @@ async def get_maintags(message: types.Message, state: FSMContext):
 
 async def get_subtags(message: types.Message, state: FSMContext):
     tag_id = message.text
-    user = await db.fetch_users(message.from_user.id)
+    user = await db_users.fetch_users(message.from_user.id)
     
     data = await state.get_data()
 
@@ -54,10 +56,10 @@ async def get_subtags(message: types.Message, state: FSMContext):
         return
     
     tag = data.get('tags', [])[int(tag_id) - 1]
-    subtags = await db.fetch_sub_tags(tag.id)
+    subtags = await db_client.fetch_sub_tags(tag.id)
 
     if not subtags:
-        messages = await db.fetch_messages_by_tag(user[0].group_id, tag.id)
+        messages = await db_client.fetch_messages_by_tag(user[0].group_id, tag.id)
         await message.answer(f"Сообщения с тегом '{tag.name}':")
         print(messages)
         message_text = ''
@@ -80,14 +82,14 @@ async def process_tag_callback(callback: types.CallbackQuery, state: FSMContext)
     print("if 0 ", callback_data[0])
     if callback_data[0] == "back":
         tag_id = int(callback_data[1])
-        tag = await db.fetch_tag_by_id(tag_id)
+        tag = await db_tags.fetch_tag_by_id(tag_id)
         print("if 1")
         if tag and tag.parent_id is not None:
-            parent_tag = await db.fetch_tag_by_id(tag.parent_id)
+            parent_tag = await db_tags.fetch_tag_by_id(tag.parent_id)
             print("if 2")
             if parent_tag:
                 print("if 3")
-                subtags = await db.fetch_sub_tags(parent_tag.id)
+                subtags = await db_client.fetch_sub_tags(parent_tag.id)
                 print("if 3 1")
                 tag_message = "Подтеги:\n" + "\n".join(f"{i+1}. {subtag.name}" for i, subtag in enumerate(subtags))
                 tag_keyboard = keyboards.get_tag_keyboard(parent_tag.id)
@@ -117,7 +119,7 @@ async def process_message_id_input(message: types.Message, state: FSMContext):
     await process_message_id(message, state, message_id)
 
 async def process_message_id(message: types.Message, state: FSMContext, message_id: str):
-    users = await db.fetch_users(message.from_user.id)
+    users = await db_users.fetch_users(message.from_user.id)
     if not users or users[0].group_id == -1:
         await message.answer("Вы не состоите в группе.")
         return
@@ -125,7 +127,7 @@ async def process_message_id(message: types.Message, state: FSMContext, message_
         await message.reply("Пожалуйста, введите ID сообщения в числовом формате.")
         return
     message_id = int(message_id)
-    msg = await db.fetch_message_by_id(message_id)
+    msg = await db_client.fetch_message_by_id(message_id)
     if msg: 
         if msg.group_id == users[0].group_id:
             await message.reply(f"ID: {msg.id}\nЗаголовок: {msg.title}\nТекст: {msg.text}")

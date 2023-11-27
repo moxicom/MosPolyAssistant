@@ -8,7 +8,9 @@ from config import bot
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
-from Db import db_functions as db
+from Db import db_tags as db_tags
+from Db import db_users as db_users
+from Db import db_messages as db_messages
 import handlers.admin.tags_attachments as tags_attachments
 
 
@@ -250,7 +252,7 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
     try:
         async with state.proxy() as data:
             group_id = data.get("group_id")
-        tags = await db.get_tags_by_parent_id(tag_id, group_id)
+        tags = await db_tags.get_tags_by_parent_id(tag_id, group_id)
         logger.info("Got all tags")
     except Exception as ex:
         logger.warning("Can not get tags by parent_id")
@@ -267,7 +269,7 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
         button_submit = InlineKeyboardButton("Подтвердить", callback_data=f"submit_tag:Root")
     else:
         try:
-            current_tag = await db.fetch_tag_by_id_group_id(tag_id, group_id)
+            current_tag = await db_tags.fetch_tag_by_id_group_id(tag_id, group_id)
             logger.info("Got current tag")
         except Exception as ex:
             logger.warning("Can not get current tag by id")
@@ -379,7 +381,7 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
 
 
 async def get_tg_ids_in_group(group_id: int, exclude_tg_id: int):
-    users_in_group = await db.fetch_users_in_group(group_id)
+    users_in_group = await db_users.fetch_users_in_group(group_id)
     tg_ids = [user[3] for user in users_in_group if user[3] != exclude_tg_id]
     return tg_ids
 
@@ -400,17 +402,17 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
         
         # Fetch all existing tags
-        existing_tags = await db.fetch_tags(group_id=group_id)
+        existing_tags = await db_tags.fetch_tags(group_id=group_id)
         # !!!!!!!!!!!!!!!!!!!!!!
 
         # Insert the new tag into the tags table
         tag_id = position_id
         if tag not in existing_tags and tag != ROOT_TAG_CODE:
-            await db.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
-            tag_id = await db.get_tag_id_by_name(tag_name=tag, group_id=group_id)
+            await db_tags.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
+            tag_id = await db_tags.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
         # Insert the message into the messages table
-        await db.insert_messages(group_id=group_id, title=user_text[:50], text=user_text, tag_id=tag_id, images=None,
+        await db_messages.insert_messages(group_id=group_id, title=user_text[:50], text=user_text, tag_id=tag_id, images=None,
                                  videos=None, files=None, created_at=datetime.now())
 
         await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено. Для вызова панели управления: > /help <")

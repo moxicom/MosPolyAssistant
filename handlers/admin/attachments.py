@@ -13,7 +13,7 @@ from typing import List, Union
 from aiogram.dispatcher.middlewares import BaseMiddleware
 #
 
-from Db import db_attachmments
+from Db import db_attachmments as db_attachmments
 
 from config import bot
 

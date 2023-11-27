@@ -11,7 +11,8 @@ from aiogram.types import ParseMode
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import bot
 from keyboards import main_keyboards as keyboards
-from Db import db_functions as db
+from Db import db_users as db_users
+from Db import db_groups_info as db_groups_info
 from handlers import general
 
 
@@ -30,9 +31,9 @@ async def send_list_of_group(callback_query: types.CallbackQuery, state: FSMCont
     try:
         await callback_query.answer()
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-        users = await db.fetch_users_in_group(group_id=group_id)
+        users = await db_users.fetch_users_in_group(group_id=group_id)
         user_names = sorted([user[1] for user in users])
-        group_info = await db.fetch_group_info_by_id(group_id=group_id)
+        group_info = await db_groups_info.fetch_group_info_by_id(group_id=group_id)
         group_name = group_info[1]
         user_names_string = '\n'.join(f"{i + 1}. {name}" for i, name in enumerate(user_names))
         chat_id = callback_query.message.chat.id

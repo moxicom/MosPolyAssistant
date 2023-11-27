@@ -1,11 +1,11 @@
 import logging
 
-from Db import db_functions as db
-
+from Db import db_users as db_users
+from Db import db_groups_members as db_groups_members
 
 async def check_user_existence(tg_id: int) -> bool:
     try:
-        fetch_user = await db.fetch_users(tg_id=tg_id)
+        fetch_user = await db_users.fetch_users(tg_id=tg_id)
         if (len(fetch_user) == 0):
             return False
         else:
@@ -16,7 +16,7 @@ async def check_user_existence(tg_id: int) -> bool:
 
 async def get_group_id_by_tg_id(tg_id: int):
     try:
-        fetch_user = await db.fetch_users(tg_id=tg_id)
+        fetch_user = await db_users.fetch_users(tg_id=tg_id)
         return int(fetch_user[0][2])
     except Exception as ex:
         logging.warning('|general/get_group_id_by_tg_id| EXCEPTION: ' + str(ex))
@@ -24,8 +24,8 @@ async def get_group_id_by_tg_id(tg_id: int):
 
 async def get_role_by_tg_id(tg_id: int):
     try:
-        fetch_user = await db.fetch_users(tg_id=tg_id)
-        fetch_group_members = await db.fetch_groups_members(group_id=fetch_user[0][2])
+        fetch_user = await db_users.fetch_users(tg_id=tg_id)
+        fetch_group_members = await db_groups_members.fetch_groups_members(group_id=fetch_user[0][2])
         role = None
         for member in fetch_group_members:
             if member[1] == fetch_user[0][0]:
