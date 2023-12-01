@@ -252,7 +252,7 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
     try:
         async with state.proxy() as data:
             group_id = data.get("group_id")
-        tags = await db_tags.get_tags_by_parent_id(tag_id, group_id)
+        tags = await db_tags.get_tags_by_parent_id(tag_id)
         logger.info("Got all tags")
     except Exception as ex:
         logger.warning("Can not get tags by parent_id")
@@ -451,13 +451,13 @@ async def process_callback_actual_existing_tag(callback_query: types.CallbackQue
     await confirm_tag(callback_query.message, state)
 
 async def delete_message_by_tag_id(tag_id):
+    """Deletes all messages for this tag. ATTENTION!!! DOES NOT DELETE ATTACHMENTS"""
     try:
         messages = await db_messages.fetch_messages_by_tag(tag_id=tag_id)
         for message in messages:
-            # Удаление атачментов из бд
-            # ЖДУ НОВУЮ СХЕМУ БД :(
+            # Removing attachments from the database by message_id
 
-            # Удаление самого сообщения
+            # Message deletion
             await db_messages.delete_messages_by_id(message[0])
     except Exception as ex:
         logger.warning('|admin/tags/delete_message_by_tag_id| message deletion error ' + str(ex))
@@ -466,13 +466,14 @@ async def delete_message_by_tag_id(tag_id):
 async def delete_tag(tag_id):
     """Recursive tag removal"""
     try:
-        # Удаляем сообщения зависимых тегов и их самих
+        # Search for dependent tags and recursively call the tag deletion function
         dependent_tags = await db_tags.get_tags_by_parent_id(tag_id)
         for dependent_tag in dependent_tags:
             await delete_tag(dependent_tag[0])
 
-        # Удаляем сообщения данного тега
-        delete_message_by_tag_id(tag_id=tag_id)
+        # Deleting the messages of this tag
+        await delete_message_by_tag_id(tag_id=tag_id)
+        await db_tags.delete_tag_by_tag_id(tag_id=tag_id)
     except Exception as ex:
         logger.warning('|admin/tags/delete_tag| Tag deletion error ' + str(ex))
 

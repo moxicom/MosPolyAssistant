@@ -9,7 +9,6 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_tags as db_tags
 from Db import paginator_db_function as paginator
-from handlers.admin import tags
 
 logger = logging.getLogger('[LOG-TagSystem]')
 INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
@@ -260,6 +259,8 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             # Basic functionality buttons
             if data['view_mode'] == 'default':
                 markup.add(CHANGE_MODE_BTN)
+
+                # Show all avalable functional
                 if mode == TAG_MODE:
                     markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                 logger.info("view_mode' == 'default")
@@ -311,6 +312,8 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             if data['view_mode'] == 'default':
                 markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
                 markup.add(CHANGE_MODE_BTN)
+                
+                # Show all avalable functional
                 if mode == TAG_MODE:
                     markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                 logger.info("view_mode' == 'default")

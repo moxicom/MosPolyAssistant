@@ -10,7 +10,6 @@ from handlers.admin import tags
 from handlers.common import tag_system
 
 async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    
     parameters = callback_query.data.split(':')
     if parameters[1] != 'root':
         tag_id = int(parameters[1])
@@ -31,7 +30,8 @@ async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
     # Performing a move
     elif parameters[2] == 'step_3':
         logging.info('move_tag step 3')
-        logging.info('Завершен перенос тега. Далее работает функция для бд')
+        logging.info('|tag_system_functions/move_tag| tag moving has started')
+        
 
         await state.update_data(view_mode = 'default')
         await tag_system.invoke_tag_system(callback_query, state)
@@ -59,7 +59,7 @@ async def delete_tag(callback_query: types.CallbackQuery, state: FSMContext):
                                     parse_mode=ParseMode.MARKDOWN)
     elif parameters[2] == 'delete':
         # start delete
-        logging.info('|tag_system/delete_tag| tag deleting has started')
+        logging.info('|tag_system_functions/delete_tag| tag deleting has started')
         await tags.delete_tag(tag_id=tag_id)
         await state.update_data(view_mode = 'default')
         await tag_system.invoke_tag_system(callback_query, state)
