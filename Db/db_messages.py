@@ -64,4 +64,43 @@ async def delete_messages_by_group_id(group_id: int):
 
         await conn.execute(deleteStmt)
         await conn.commit()
-        logging.info("|Db/db_functions/delete_messages_by_group_id| complited")
+        logging.info("|Db/db_messages/delete_messages_by_group_id| complited")
+
+async def fetch_messages_by_tag(tag_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("messages", metadata,
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
+                      Column('title', VARCHAR),
+                      Column('text', VARCHAR),
+                      Column('tag_id', BIGINT),
+                      Column('images', VARCHAR),
+                      Column('videos', VARCHAR),
+                      Column('files', VARCHAR),
+                      Column('created_at', Date))
+        selectStmt = select(table).where(table.c.tag_id == tag_id)
+        result = await conn.execute(selectStmt)
+        messages = result.fetchall()
+        logging.info("|Db/db_messages/fetch_messages_by_tag| complited")
+        return messages
+
+async def delete_messages_by_id(id: int):
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table("messages", metadata,
+                      Column('id', BIGINT, primary_key=True),
+                      Column('group_id', BIGINT),
+                      Column('title', VARCHAR),
+                      Column('text', VARCHAR),
+                      Column('tag_id', BIGINT),
+                      Column('images', VARCHAR),
+                      Column('videos', VARCHAR),
+                      Column('files', VARCHAR),
+                      Column('created_at', Date))
+
+        deleteStmt = table.delete().where(table.c.id == id)
+
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_messages/delete_messages_by_id| complited")
