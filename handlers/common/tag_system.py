@@ -9,6 +9,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from handlers import general
 from Db import db_tags as db_tags
 from Db import paginator_db_function as paginator
+from handlers.admin import tags
 
 logger = logging.getLogger('[LOG-TagSystem]')
 INTERNAL_ERROR_MSG = "Внутрисерверная ошибка. Повторите попытку. При повторении ошибки обратитесь к администраторам"
@@ -137,6 +138,9 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
                 else:
                     callback_mode = f"cts_swt:{tag[0]}:tag:1"
 
+            # Delete tag
+            elif data['view_mode'] == 'delete_tag':
+                callback_mode = f'delete_tag:{tag[0]}:confirm:{tag[2]}'
             markup.add(
                 InlineKeyboardButton(
                     f"{folder_emoji}|{tag[2]}",
@@ -241,6 +245,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
     MOVE_TAG_BTN = InlineKeyboardButton('Переместить тег', callback_data=f"move_tag:{BUTTON_TAG_ID}:step_1")
     PASTE_TAG_BTN = InlineKeyboardButton('Вставить в текущий тег', callback_data=f"move_tag:{BUTTON_TAG_ID}:step_3")
 
+    #Delete tag
+    DELETE_TAG_BTN = InlineKeyboardButton('Удалить тег', callback_data=f"delete_tag:{BUTTON_TAG_ID}:select_tag")
+    
     logger.info(f"get_message_common_info tag_id:{tag_id}, group id:{group_id}, mode:{mode}")
 
     # getting a current tag
@@ -254,7 +261,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             if data['view_mode'] == 'default':
                 markup.add(CHANGE_MODE_BTN)
                 if mode == TAG_MODE:
-                    markup.add(MOVE_TAG_BTN)
+                    markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -268,6 +275,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                     logger.info("view_mode' == 'move_tag_step_2")
                     message_text += "\nВыберите тег для вставки"
                     markup.add(PASTE_TAG_BTN)
+                # Delete tags
+                elif data['view_mode'] == 'delete_tag':
+                    message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"
         # markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
@@ -302,7 +312,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
                 markup.add(CHANGE_MODE_BTN)
                 if mode == TAG_MODE:
-                    markup.add(MOVE_TAG_BTN)
+                    markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -315,6 +325,10 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 elif data['view_mode'] == 'move_tag_step_2':
                     message_text += "\nВыберите тег для вставки"
                     markup.add(PASTE_TAG_BTN)
+
+                # Delete tags
+                elif data['view_mode'] == 'delete_tag':
+                    message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"
         return False, message_text
 
 
@@ -337,32 +351,6 @@ async def cancel_operation_tag(callback_query: types.CallbackQuery, state: FSMCo
     logger.info('cancel_operation_tag | view_mode = default')
     await invoke_tag_system(callback_query, state)
 
-async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
-    
-    parameters = callback_query.data.split(':')
-    if parameters[1] != 'root':
-        tag_id = int(parameters[1])
-    else:
-        tag_id = None
-
-    # Selecting a tag to move    
-    if parameters[2] == 'step_1':
-        logger.info('move_tag step 1')
-        await state.update_data(view_mode = 'move_tag')
-        await invoke_tag_system(callback_query, state, tag_id=tag_id)
-    # Choosing a place to move tag    
-    elif parameters[2] == 'step_2':
-        logger.info('move_tag step 2')
-        await state.update_data(view_mode = 'move_tag_step_2')
-        await state.update_data(moving_tag_id = tag_id)
-        await invoke_tag_system(callback_query, state)
-    # Performing a move
-    elif parameters[2] == 'step_3':
-        logger.info('move_tag step 3')
-        logger.info('Завершен перенос тега. Далее работает функция для бд')
-
-        await state.update_data(view_mode = 'default')
-        await invoke_tag_system(callback_query, state)
 
 
 def tag_system_handlers(dp: Dispatcher):
@@ -372,4 +360,3 @@ def tag_system_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(invoke_tag_system, lambda c: c.data.startswith("cts_swt"), state=States.PROCESS)
 
     dp.register_callback_query_handler(cancel_operation_tag, lambda c: c.data == "cancel_operation_tag", state="*")
-    dp.register_callback_query_handler(move_tag, lambda c: c.data.startswith("move_tag"), state="*")

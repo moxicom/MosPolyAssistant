@@ -3,7 +3,7 @@ import asyncio
 
 from config import bot, dp
 
-from handlers.common import tag_system, messages_system
+from handlers.common import tag_system, messages_system, tag_system_functions
 from handlers.admin import change_password, list_of_group, basics, tags, group_delete, attachments
 from handlers import start_interaction, register, client
 from handlers.client_handlers import leave_group 
@@ -31,6 +31,7 @@ messages_system.messages_system_handler(dp)
 start_interaction.start_interactions_handlers(dp)
 register.register_handlers(dp)
 tag_system.tag_system_handlers(dp)
+tag_system_functions.tag_system_functions_handlers(dp)
 
 
 ### ADMIN HANDLERS
