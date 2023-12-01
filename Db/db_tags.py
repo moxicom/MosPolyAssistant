@@ -45,7 +45,7 @@ async def get_tag_id_by_name(tag_name: str, group_id: int):
             return None
         
         
-async def get_tags_by_parent_id(parent_id: int, group_id: int):
+async def get_tags_by_parent_id(parent_id: int):
     """Returns an array of tags that have (id, group_id, name, parent_id)"""
     async with engine.connect() as conn:
         metadata = MetaData()
@@ -54,7 +54,7 @@ async def get_tags_by_parent_id(parent_id: int, group_id: int):
                       Column('group_id', Integer),
                       Column('name', VARCHAR),
                       Column('parent_id', Integer))
-        select_stmt = select(table).where(and_(table.c.parent_id == parent_id, table.c.group_id == group_id))
+        select_stmt = select(table).where(and_(table.c.parent_id == parent_id))
         result = await conn.execute(select_stmt)
         tags = result.fetchall()
         return tags
@@ -126,4 +126,17 @@ async def delete_tags_by_group_id(group_id: int):
         deleteStmt = table.delete().where(table.c.group_id == group_id)
         await conn.execute(deleteStmt)
         await conn.commit()
-        logging.info("|Db/db_functions/delete_tags_by_group_id| complited")
+        logging.info("|Db/db_tags/delete_tags_by_group_id| complited")
+
+async def delete_tag_by_tag_id(tag_id: int):
+    async with engine.connect() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        deleteStmt = table.delete().where(table.c.id == tag_id)
+        await conn.execute(deleteStmt)
+        await conn.commit()
+        logging.info("|Db/db_tags/delete_tag_by_tag_id| complited")
