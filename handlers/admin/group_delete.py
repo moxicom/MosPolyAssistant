@@ -154,7 +154,6 @@ async def delete_group(callback_query: types.CallbackQuery, state: FSMContext):
     try:
         await db_groups_members.delete_group_members_by_group_id(group_id)
         await db_users.delete_users_by_group_id(group_id)
-        #await db.delete_images_by_message_id(message_id)
         await db_messages.delete_messages_by_group_id(group_id)
         await db_tags.delete_tags_by_group_id(group_id)
         await db_groups_info.delete_group_info_by_group_id(group_id)
