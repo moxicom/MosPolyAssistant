@@ -136,10 +136,12 @@ async def tag_system_show_tags(callback_query: types.CallbackQuery, state: FSMCo
                     continue
                 else:
                     callback_mode = f"cts_swt:{tag[0]}:tag:1"
-
             # Delete tag
             elif data['view_mode'] == 'delete_tag':
                 callback_mode = f'delete_tag:{tag[0]}:confirm:{tag[2]}'
+            # Rename tag
+            elif data['view_mode'] == 'rename_tag':
+                callback_mode = f'rename_tag:{tag[0]}:selected:{tag[2]}'
             markup.add(
                 InlineKeyboardButton(
                     f"{folder_emoji}|{tag[2]}",
@@ -245,9 +247,12 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
     MOVE_TAG_BTN = InlineKeyboardButton('Переместить тег', callback_data=f"move_tag:{BUTTON_TAG_ID}:step_1")
     PASTE_TAG_BTN = InlineKeyboardButton('Вставить в текущий тег', callback_data=f"move_tag:{BUTTON_TAG_ID}:step_3")
 
-    #Delete tag
+    # Delete tag
     DELETE_TAG_BTN = InlineKeyboardButton('Удалить тег', callback_data=f"delete_tag:{BUTTON_TAG_ID}:select_tag")
     
+    # Rename tag
+    RENAME_TAG_BTN = InlineKeyboardButton('Переименовать тег', callback_data=f"rename_tag:{BUTTON_TAG_ID}:select_tag")
+
     logger.info(f"get_message_common_info tag_id:{tag_id}, group id:{group_id}, mode:{mode}")
 
     # getting a current tag
@@ -264,6 +269,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 # Show all avalable functional
                 if mode == TAG_MODE:
                     markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
+                    markup.add(RENAME_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -280,6 +286,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 # Delete tags
                 elif data['view_mode'] == 'delete_tag':
                     message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"
+                # Rename tag
+                elif data['view_mode'] == 'rename_tag':
+                    message_text += "\nВыберите тег для переименования"
         # markup.add(CHANGE_MODE_BTN)
         return False, message_text
     else:
@@ -318,6 +327,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                 # Show all avalable functional
                 if mode == TAG_MODE:
                     markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
+                    markup.add(RENAME_TAG_BTN)
                 logger.info("view_mode' == 'default")
 
             # Buttons that depend on the context of the operation
@@ -331,10 +341,12 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
                     message_text += "\nВыберите тег для вставки"
                     # markup.add(BACK_TO_PARENT)
                     markup.add(PASTE_TAG_BTN)
-
                 # Delete tags
                 elif data['view_mode'] == 'delete_tag':
                     message_text += "\nВыберите тег для удаления (Все вложенные теги и сообщения будут удалены)"
+                # Rename tag
+                elif data['view_mode'] == 'rename_tag':
+                    message_text += "\nВыберите тег для переименования"
         return False, message_text
 
 

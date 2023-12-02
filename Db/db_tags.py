@@ -142,7 +142,7 @@ async def delete_tag_by_tag_id(tag_id: int):
         logging.info("|Db/db_tags/delete_tag_by_tag_id| complited")
 
 async def update_parent_id(tag_id: int, new_parent_id: int):
-    """Updates the parent_id of a tag with the specified tag_id."""
+    """Updates the parent_id of a tag"""
     async with engine.begin() as conn:
         metadata = MetaData()
         table = Table("tags", metadata,
@@ -154,6 +154,23 @@ async def update_parent_id(tag_id: int, new_parent_id: int):
             table.update()
             .where(table.c.id == tag_id)
             .values(parent_id=new_parent_id)
+        )
+        await conn.execute(update_stmt)
+        await conn.commit()
+    
+async def update_name(tag_id, new_name):
+    """Updates the name of a tag"""
+    async with engine.begin() as conn:
+        metadata = MetaData()
+        table = Table("tags", metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('group_id', Integer),
+                      Column('name', VARCHAR),
+                      Column('parent_id', Integer))
+        update_stmt = (
+            table.update()
+            .where(table.c.id == tag_id)
+            .values(name=new_name)
         )
         await conn.execute(update_stmt)
         await conn.commit()
