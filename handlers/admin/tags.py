@@ -252,7 +252,7 @@ async def invoke_tag_menu(callback_query: types.CallbackQuery, state: FSMContext
     try:
         async with state.proxy() as data:
             group_id = data.get("group_id")
-        tags = await db_tags.get_tags_by_parent_id(tag_id)
+        tags = await db_tags.get_tags_by_parent_id(tag_id, group_id)
         logger.info("Got all tags")
     except Exception as ex:
         logger.warning("Can not get tags by parent_id")
@@ -463,13 +463,13 @@ async def delete_message_by_tag_id(tag_id):
         logger.warning('|admin/tags/delete_message_by_tag_id| message deletion error ' + str(ex))
 
 
-async def delete_tag(tag_id):
+async def delete_tag(tag_id: int, group_id: int):
     """Recursive tag removal"""
     try:
         # Search for dependent tags and recursively call the tag deletion function
-        dependent_tags = await db_tags.get_tags_by_parent_id(tag_id)
+        dependent_tags = await db_tags.get_tags_by_parent_id(tag_id, group_id)
         for dependent_tag in dependent_tags:
-            await delete_tag(dependent_tag[0])
+            await delete_tag(dependent_tag[0], group_id)
 
         # Deleting the messages of this tag
         await delete_message_by_tag_id(tag_id=tag_id)

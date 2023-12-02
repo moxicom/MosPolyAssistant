@@ -236,6 +236,7 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
     CHANGE_MODE_TEXT = "Увидеть сообщения" if mode == TAG_MODE else "Увидеть теги"
     BUTTON_TAG_ID = "root" if tag_id == None else tag_id
     CHANGE_MODE_BTN = InlineKeyboardButton(CHANGE_MODE_TEXT, callback_data=f"cts_swt:{BUTTON_TAG_ID}:{CHANGED_MODE}:1")
+    
 
     # Canceling any operations with tags and messages. Setting the default view_mode
     BACK_BTN = InlineKeyboardButton('Отменить', callback_data="cancel_operation_tag")
@@ -304,13 +305,14 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
 
         # adding `go to parent` button
         message_text = f"Сейчас вы находитесь в теге\n*{current_tag[2]}*:\n"
-    
+
+        BACK_TO_PARENT = InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1")
 
         # Checking the view_mode, the display of different buttons is dependent on it
         async with state.proxy() as data:
             # Basic functionality buttons
             if data['view_mode'] == 'default':
-                markup.add(cancel_btn, InlineKeyboardButton("\U00002934 К родительскому тегу", callback_data=f"cts_swt:{new_tag_id}:{mode}:1"))
+                markup.add(cancel_btn, BACK_TO_PARENT)
                 markup.add(CHANGE_MODE_BTN)
                 
                 # Show all avalable functional
@@ -321,12 +323,13 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             # Buttons that depend on the context of the operation
             else:
                 logger.info("view_mode' != 'default")
-                markup.add(BACK_BTN)
+                markup.add(BACK_BTN, BACK_TO_PARENT)
                 # Move tags
                 if data['view_mode'] == 'move_tag':
                     message_text += "\nВыберите тег для перемещения"
                 elif data['view_mode'] == 'move_tag_step_2':
                     message_text += "\nВыберите тег для вставки"
+                    # markup.add(BACK_TO_PARENT)
                     markup.add(PASTE_TAG_BTN)
 
                 # Delete tags

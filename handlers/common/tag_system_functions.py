@@ -8,6 +8,7 @@ from config import bot
 from Db import db_tags as db_tags
 from handlers.admin import tags
 from handlers.common import tag_system
+from handlers import general
 
 async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
     parameters = callback_query.data.split(':')
@@ -32,6 +33,11 @@ async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
         logging.info('move_tag step 3')
         logging.info('|tag_system_functions/move_tag| tag moving has started')
         
+        try:
+           async with state.proxy() as data: 
+                await db_tags.update_parent_id(new_parent_id=tag_id, tag_id=data['moving_tag_id'])
+        except Exception as ex:
+            logging.warning('|tag_system_functions/move_tag| tag move error ' + str(ex))
 
         await state.update_data(view_mode = 'default')
         await tag_system.invoke_tag_system(callback_query, state)
@@ -52,8 +58,9 @@ async def delete_tag(callback_query: types.CallbackQuery, state: FSMContext):
 
     # Confirmation of tag deletion 
     elif parameters[2] == 'confirm':
+        group_id = await general.get_group_id_by_tg_id(callback_query.from_user.id)
         markup = InlineKeyboardMarkup(row_width=2)
-        markup.add(InlineKeyboardButton("Да", callback_data=f"delete_tag:{parameters[1]}:delete"))
+        markup.add(InlineKeyboardButton("Да", callback_data=f"delete_tag:{parameters[1]}:delete:{group_id}"))
         markup.add(InlineKeyboardButton("Нет", callback_data="cancel_operation_tag"))
 
         await bot.edit_message_text(chat_id=callback_query.message.chat.id,
@@ -64,7 +71,8 @@ async def delete_tag(callback_query: types.CallbackQuery, state: FSMContext):
     # Start deletion
     elif parameters[2] == 'delete':
         logging.info('|tag_system_functions/delete_tag| tag deleting has started')
-        await tags.delete_tag(tag_id=tag_id)
+        print(parameters)
+        await tags.delete_tag(tag_id=tag_id, group_id=int(parameters[3]))
         await state.update_data(view_mode = 'default')
         await tag_system.invoke_tag_system(callback_query, state)
         logging.info('|tag_system_functions/delete_tag| tag deleting has finished')
