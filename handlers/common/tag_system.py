@@ -35,6 +35,17 @@ async def start(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
     # set standart view_mode
     await state.update_data(view_mode = 'default')
+
+    # update user role data
+    try:
+        role = await general.get_role_by_tg_id(callback_query.from_user.id)
+        await state.update_data(role = role)
+    except:
+        logger.warning("Update role state error")
+        await bot.send_message(callback_query.from_user.id, INTERNAL_ERROR_MSG)
+        await state.finish()
+        return
+    
     # update group_id data
     try:
         group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
@@ -265,9 +276,9 @@ async def get_message_common_info(callback_query: types.CallbackQuery, state: FS
             # Basic functionality buttons
             if data['view_mode'] == 'default':
                 markup.add(CHANGE_MODE_BTN)
-
+                role = data['role']
                 # Show all avalable functional
-                if mode == TAG_MODE:
+                if mode == TAG_MODE and role == 2:
                     markup.add(MOVE_TAG_BTN, DELETE_TAG_BTN)
                     markup.add(RENAME_TAG_BTN)
                 logger.info("view_mode' == 'default")
