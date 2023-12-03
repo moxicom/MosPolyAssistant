@@ -11,13 +11,16 @@ engine = asyncio_ext.create_async_engine(
     future=True
 )
 
-async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
-    async with engine.begin() as conn:
-        metadata = MetaData()
-        table = Table("groups_info", metadata,
+metadata = MetaData()
+GROUPS_INFO_TABLE = Table("groups_info", metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', VARCHAR(50)),
                       Column('password', VARCHAR))
+
+async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
+    async with engine.begin() as conn:
+        table = GROUPS_INFO_TABLE
+
         insertStmt = table.insert().values(name=group_name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
@@ -25,11 +28,8 @@ async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
 
 async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', VARCHAR(50)),
-                      Column('password', VARCHAR))
+        table = GROUPS_INFO_TABLE
+
         selectStmt = select(table).where(table.c.name == group_name)
         result = await conn.execute(selectStmt)
         group_info = result.fetchall()
@@ -39,11 +39,8 @@ async def fetch_groups_info(group_name: VARCHAR):
 
 async def fetch_group_info_by_id(group_id: int):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', VARCHAR(50)),
-                      Column('password', VARCHAR))
+        table = GROUPS_INFO_TABLE
+
         selectStmt = select(table).where(table.c.id == group_id)
         result = await conn.execute(selectStmt)
         group_info = result.fetchone()
@@ -54,12 +51,7 @@ async def fetch_group_info_by_id(group_id: int):
 async def change_group_info(id: int, field: str, new_value: str):
     """Изменение параметра в базе данных по id"""
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table('groups_info', metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', VARCHAR(20)),
-                      Column('password', VARCHAR(20))
-                      )
+        table = GROUPS_INFO_TABLE
 
         # Проверка на наличие значения в параметре id
         stmt = select(table).where(table.c.id == id)
@@ -82,12 +74,7 @@ async def change_group_info(id: int, field: str, new_value: str):
 
 async def delete_group_info_by_group_id(group_id: int):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table('groups_info', metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', VARCHAR(20)),
-                      Column('password', VARCHAR(20))
-                      )
+        table = GROUPS_INFO_TABLE
 
         deleteStmt = table.delete().where(table.c.id == group_id)
         await conn.execute(deleteStmt)
