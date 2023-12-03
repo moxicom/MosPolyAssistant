@@ -38,6 +38,7 @@ async def move_tag(callback_query: types.CallbackQuery, state: FSMContext):
            async with state.proxy() as data: 
                 await db_tags.update_parent_id(new_parent_id=tag_id, tag_id=data['moving_tag_id'])
         except Exception as ex:
+            state.finish()
             logging.warning('|tag_system_functions/move_tag| tag move error ' + str(ex))
 
         await state.update_data(view_mode = 'default')
@@ -105,14 +106,11 @@ async def rename_tag(callback_query: types.CallbackQuery, state: FSMContext):
     elif parameters[2] == 'rename':
         try:
             await db_tags.update_name(tag_id=tag_id, new_name=parameters[3])
-            await state.update_data(view_mode = 'default')
-            # This is necessary for displaying tags
-            group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-            await state.update_data(group_id = group_id)
-            
-            await tag_system.invoke_tag_system(callback_query, state)
         except Exception as ex:
+            state.finish()
             logging.warning('|tag_system_functions/rename_tag| tag rename error ' + str(ex))
+        
+        await tag_system.start(callback_query, state)
 
         
 
