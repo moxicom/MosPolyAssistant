@@ -11,14 +11,17 @@ engine = asyncio_ext.create_async_engine(
     future=True
 )
 
-async def insert_groups_members(member_id: int, group_id: int, role: int):
-    async with engine.begin() as conn:
-        metadata = MetaData()
-        table = Table("groups_members", metadata,
+metadata = MetaData()
+GROUP_MEMBERS_TABLE = Table("groups_members", metadata,
                       Column('id', Integer, primary_key=True),
                       Column('member_id', Integer),
                       Column('group_id', Integer),
                       Column('role', Integer))
+
+async def insert_groups_members(member_id: int, group_id: int, role: int):
+    async with engine.begin() as conn:
+        table = GROUP_MEMBERS_TABLE
+
         insertStmt = table.insert().values(member_id=member_id, group_id=group_id, role=role)
         await conn.execute(insertStmt)
         await conn.commit()
@@ -26,12 +29,7 @@ async def insert_groups_members(member_id: int, group_id: int, role: int):
 
 async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_members", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('member_id', Integer),
-                      Column('group_id', Integer),
-                      Column('role', Integer))
+        table = GROUP_MEMBERS_TABLE
 
         if (group_id == -1 and member_id != -1):
             selectStmt = select(table).where(table.c.member_id == member_id)
@@ -50,12 +48,7 @@ async def fetch_groups_members(group_id: int = -1, member_id: int = -1):
 
 async def delete_group_members_by_group_id(group_id: int):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_members", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('member_id', Integer),
-                      Column('group_id', Integer),
-                      Column('role', Integer))
+        table = GROUP_MEMBERS_TABLE
 
         deleteStmt = table.delete().where(table.c.group_id == group_id)
         await conn.execute(deleteStmt)
@@ -65,12 +58,7 @@ async def delete_group_members_by_group_id(group_id: int):
 
 async def delete_group_member(id: int):
     async with engine.connect() as conn:
-        metadata = MetaData()
-        table = Table("groups_members", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('member_id', Integer),
-                      Column('group_id', Integer),
-                      Column('role', Integer))
+        table = GROUP_MEMBERS_TABLE
 
         deleteStmt = table.delete().where(table.c.member_id == id)
         await conn.execute(deleteStmt)
