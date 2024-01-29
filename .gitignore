@@ -1,6 +1,17 @@
+### venv
 env/
-__pycache__/
-handlers/__pycache__
-keyboards/__pycache__
-MosPolyAssistant.log
+__pycache__
+# handlers/__pycache__
+# keyboards/__pycache_
+
+
+### env
 .env
+
+
+### alembic (migration)
+migration/versions
+
+
+### logs
+MosPolyAssistant.log

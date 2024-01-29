@@ -5,22 +5,12 @@ from sqlalchemy.orm import declarative_base as base
 import logging
 from sqlalchemy import update
 
-engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
-    echo=False,
-    future=True
-)
+from Db.postgres import engine, users_table
 
-metadata = MetaData()
-USERS_TABLE = Table('users', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('name', VARCHAR),
-                Column('group_id', Integer),
-                Column('tg_id', BIGINT))
 
 async def insert_users(name: VARCHAR, group_id: int, tg_id: BIGINT):
     async with engine.begin() as conn:
-        table = USERS_TABLE
+        table = users_table
         
         insertStmt = table.insert().values(name=name, group_id=group_id, tg_id=tg_id)
         await conn.execute(insertStmt)
@@ -29,7 +19,7 @@ async def insert_users(name: VARCHAR, group_id: int, tg_id: BIGINT):
 
 async def fetch_users(tg_id: BIGINT):
     async with engine.connect() as conn:
-        table = USERS_TABLE
+        table = users_table
 
         selectStmt = select(table).where(table.c.tg_id == tg_id)
         result = await conn.execute(selectStmt)
@@ -40,7 +30,7 @@ async def fetch_users(tg_id: BIGINT):
 
 async def fetch_users_in_group(group_id: int):
     async with engine.connect() as conn:
-        table = USERS_TABLE
+        table = users_table
 
         selectStmt = select(table).where(table.c.group_id == group_id)
         result = await conn.execute(selectStmt)
@@ -51,7 +41,7 @@ async def fetch_users_in_group(group_id: int):
 
 async def delete_user(tg_id: int):
     async with engine.connect() as conn:
-        table = USERS_TABLE
+        table = users_table
 
         deleteStmt = table.delete().where(table.c.tg_id == tg_id)
         await conn.execute(deleteStmt)
@@ -61,7 +51,7 @@ async def delete_user(tg_id: int):
 
 async def delete_users_by_group_id(group_id: int):
     async with engine.connect() as conn:
-        table = USERS_TABLE
+        table = users_table
         
         deleteStmt = table.delete().where(table.c.group_id == group_id)
         await conn.execute(deleteStmt)
