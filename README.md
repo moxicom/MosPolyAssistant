@@ -35,3 +35,31 @@ User roles:
 - ```0``` - basic member,
 - ```1``` - modder,
 - ```2``` - owner
+
+## HOW TO USE
+Better to use `linux` or `WSL`. Or you can install `make`.
+
+Also you can open `makefile` and run commands manually
+####
+
+1. Create venv !!! with NAME ENV !!!
+2. Activate venv
+3. install all deps to venv
+   ```
+   make install_dep
+   ```
+4. create .env file
+   ```
+   # .env vars
+   TOKEN=<TELEGRAM_BOT_TOKEN>
+   DB_USER=<DB_USER>
+   DB_PASS=<DB_PASS>
+   DB_HOST=<DB_HOST>
+   DB_PORT=<DB_PORT>
+   DB_NAME=<DB_NAME>
+   ```
+5. to make migration use next command
+   ```
+   make migration MIG_NAME=<MIG_NAME>
+   ```
+
