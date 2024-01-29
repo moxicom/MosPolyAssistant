@@ -3,18 +3,18 @@
 
 .PHONY: migration install_dep run alembic migration
 
-install_dep:
-	pip install python-dotenv
-	pip install aiogram==2.25.1
-	pip install SQLAlchemy==2.0.21
-	pip install asyncpg==0.28.0
-	pip install asyncio
-	pip install alembic
-	pip install psycopg2-binary
-	pip list
+venv:
+	python3 -m venv ./env
 
-run:
-	python3 start_bot.py
+install_dep:
+	env/bin/python -m pip install python-dotenv
+	env/bin/python -m pip install aiogram==2.25.1
+	env/bin/python -m pip install SQLAlchemy==2.0.21
+	env/bin/python -m pip install asyncpg==0.28.0
+	env/bin/python -m pip install asyncio
+	env/bin/python -m pip install alembic
+	env/bin/python -m pip install psycopg2-binary
+	env/bin/python -m pip list
 
 alembic:
 	alembic init migration
@@ -24,5 +24,10 @@ alembic:
 MIG_NAME ?= default_migration
 
 migration:
-	alembic revision --autogenerate -m "$(MIG_NAME)"
-	alembic upgrade head
+	env/bin/python -m alembic revision --autogenerate -m "$(MIG_NAME)"
+	env/bin/python -m alembic upgrade head
+
+
+run:
+	env/bin/python -m start_bot
+	# or just run start_bot.py using env

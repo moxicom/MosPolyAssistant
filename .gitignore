@@ -10,7 +10,7 @@ __pycache__
 
 
 ### alembic (migration)
-migration/versions
+migration/versions/
 
 
 ### logs
