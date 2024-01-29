@@ -18,7 +18,8 @@ run:
 
 alembic:
 	alembic init migration
-	# В файле alembic.ini указываем адрес базы
+	# Use alembic.ini to make migraion properties
+	# You do not need use this command
 
 MIG_NAME ?= default_migration
 
