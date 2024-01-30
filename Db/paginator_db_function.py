@@ -4,33 +4,7 @@ from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, 
 from sqlalchemy.orm import declarative_base as base
 import asyncio
 from sqlalchemy import update
-
-
-engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
-    echo=False,
-    future=True
-)
-
-
-metadata = MetaData()
-
-tags_table = Table("tags", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('group_id', Integer),
-                      Column('name', VARCHAR),
-                      Column('parent_id', Integer))
-
-messages_table = Table("messages", metadata,
-                       Column('id', Integer, primary_key=True),
-                       Column('group_id', Integer),
-                       Column('title', VARCHAR),
-                       Column('text', VARCHAR),
-                       Column('tag_id', Integer),
-                       Column('images', VARCHAR),
-                       Column('videos', VARCHAR),
-                       Column('files', VARCHAR),
-                       Column('created_at', Date))
+from Db.postgres import engine, tags_table, messages_table
 
 
 async def fetch_tags_with_pagination(page_number: int, items_per_page: int, group_id, parent_id):

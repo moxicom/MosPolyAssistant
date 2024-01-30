@@ -1,20 +1,6 @@
-from sqlalchemy.ext import asyncio as asyncio_ext
 from sqlalchemy.sql import select
-from sqlalchemy import Column, Integer, Table, MetaData, VARCHAR
+from Db.postgres import engine, attachments_table
 
-engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
-    echo=False,
-    future=True
-)
-
-metadata = MetaData()
-attachments_table = Table('attachments', metadata,
-                      Column('id', Integer, primary_key=True, autoincrement=True),
-                      Column('video', VARCHAR, nullable=True),
-                      Column('file', VARCHAR, nullable=True),
-                      Column('image', VARCHAR, nullable=True),
-                      Column('audio', VARCHAR, nullable=True))
 
 
 async def insert_attachment(video=None, file=None, image=None, audio=None):

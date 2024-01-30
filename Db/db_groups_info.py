@@ -1,34 +1,22 @@
-from sqlalchemy.ext import asyncio as asyncio_ext
 from sqlalchemy.sql import select
-from sqlalchemy import Column, String, Integer, Table, MetaData, VARCHAR, Date, BIGINT, and_
-from sqlalchemy.orm import declarative_base as base
+from sqlalchemy import VARCHAR
 import logging
-from sqlalchemy import update
+from Db.postgres import engine, groups_info_table
 
-engine = asyncio_ext.create_async_engine(
-    "postgresql+asyncpg://postgres:314159@localhost:5432/postgres",
-    echo=False,
-    future=True
-)
-
-metadata = MetaData()
-GROUPS_INFO_TABLE = Table("groups_info", metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', VARCHAR(50)),
-                      Column('password', VARCHAR))
 
 async def insert_groups_info(group_name: VARCHAR, password: VARCHAR):
     async with engine.begin() as conn:
-        table = GROUPS_INFO_TABLE
+        table = groups_info_table
 
         insertStmt = table.insert().values(name=group_name, password=password)
         await conn.execute(insertStmt)
         await conn.commit()
         logging.info('|Db/db_functions/insert_groups_info| groups info commited')
 
+
 async def fetch_groups_info(group_name: VARCHAR):
     async with engine.connect() as conn:
-        table = GROUPS_INFO_TABLE
+        table = groups_info_table
 
         selectStmt = select(table).where(table.c.name == group_name)
         result = await conn.execute(selectStmt)
@@ -39,7 +27,7 @@ async def fetch_groups_info(group_name: VARCHAR):
 
 async def fetch_group_info_by_id(group_id: int):
     async with engine.connect() as conn:
-        table = GROUPS_INFO_TABLE
+        table = groups_info_table
 
         selectStmt = select(table).where(table.c.id == group_id)
         result = await conn.execute(selectStmt)
@@ -51,7 +39,7 @@ async def fetch_group_info_by_id(group_id: int):
 async def change_group_info(id: int, field: str, new_value: str):
     """Изменение параметра в базе данных по id"""
     async with engine.connect() as conn:
-        table = GROUPS_INFO_TABLE
+        table = groups_info_table
 
         # Проверка на наличие значения в параметре id
         stmt = select(table).where(table.c.id == id)
@@ -74,7 +62,7 @@ async def change_group_info(id: int, field: str, new_value: str):
 
 async def delete_group_info_by_group_id(group_id: int):
     async with engine.connect() as conn:
-        table = GROUPS_INFO_TABLE
+        table = groups_info_table
 
         deleteStmt = table.delete().where(table.c.id == group_id)
         await conn.execute(deleteStmt)
