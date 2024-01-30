@@ -12,6 +12,7 @@ async def check_user_existence(tg_id: int) -> bool:
             return True
     except Exception as ex:
         logging.warning('|general/check_user_existence| EXCEPTION: ' + str(ex))
+        return False
 
 
 async def get_group_id_by_tg_id(tg_id: int):
@@ -25,8 +26,12 @@ async def get_group_id_by_tg_id(tg_id: int):
 async def get_role_by_tg_id(tg_id: int):
     try:
         fetch_user = await db_users.fetch_users(tg_id=tg_id)
-        fetch_group_members = await db_groups_members.fetch_groups_members(group_id=fetch_user[0][2])
-        role = None
+        # Check if user exists in db
+        if len(fetch_user) == 0:
+            return -1
+        # !! FIXED PARAMETER BELOW, CHECK FOR BUGS
+        fetch_group_members = await db_groups_members.fetch_groups_members(group_id=fetch_user[0][2], member_id=fetch_user[0][0])
+        role = -1
         for member in fetch_group_members:
             if member[1] == fetch_user[0][0]:
                 role = member[3]

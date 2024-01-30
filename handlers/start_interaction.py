@@ -18,7 +18,7 @@ async def start_interaction(message: types.Message):
         elif role == 0:
             await message.reply("Добро пожаловать")
         else:
-            bot.send_message(message.from_user.id, "что-то пошло не так")
+            bot.send_message(message.from_user.id, "что-то пошло не так. Попробуйите команду /start")
     else:
         await bot.send_message(message.from_user.id, "Вы не зарегистрированы.\n" +
                                "Чтоб зарегистрироваться напишите следующую команду:\n\t/reg")
@@ -30,6 +30,8 @@ async def help_command(message: types.Message):
         await message.reply("Вот что ты можешь сделать", reply_markup=keyboards.admin_functions_mkp)
     elif role == 0:
         await message.reply("Вот что ты можешь сделать", reply_markup=keyboards.client_functions_mkp)
+    elif role == -1:
+        await message.reply("Сначала нужно зарегистрироваться. Посмотрите доступные команды в меню команд")
     else:
         await bot.send_message(message.from_user.id, "что-то пошло не так")
 
