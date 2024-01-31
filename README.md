@@ -41,18 +41,18 @@ Better to use `linux` or `WSL`. Or you can install `make` to your windows machin
 2. Use next information OR open `makefile` and run commands manually.
 #
 1. Create venv !!! with NAME `env` !!!
-   ```
+   ```bash
    make venv
    ```
    1.1 **If you install manually** - activate venv
 
 2. Install all deps to venv
-   ```
+   ```bash
    make install_dep
    ```
 
 3. Create .env file
-   ```
+   ```env
    # .env vars
    TOKEN=<TELEGRAM_BOT_TOKEN>
    DB_USER=<DB_USER>
@@ -63,7 +63,7 @@ Better to use `linux` or `WSL`. Or you can install `make` to your windows machin
    ```
 
 4. Make migration use next command
-   ```
+   ```bash
    make migration MIG_NAME=<MIG_NAME>
    ```
    P.S. If you have **error** there like: [alembic.util.messaging] Can't locate revision identified by '2281337e322' 
@@ -73,6 +73,6 @@ Better to use `linux` or `WSL`. Or you can install `make` to your windows machin
    Create folder `migration/versions`
 
 5. Run bot
-   ```
+   ```bash
    make run
    ```
