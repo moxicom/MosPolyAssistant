@@ -144,17 +144,25 @@ async def user_group_set(message: types.Message, state: FSMContext):  # FSM grou
 async def user_password_check(message: types.Message, state: FSMContext):  # FSM password
     async with state.proxy() as data:
         if data['role'] == '0':
+            ## IF ROLE IS BASIC USER
             try:
                 group_info_fetch = await db_groups_info.fetch_groups_info(group_name=data['group'])
                 logging.info('|register/user_password_check| User_password_check (role 0) %s', group_info_fetch[0])
                 if hashlib.sha256(message.text.encode()).hexdigest() == group_info_fetch[0][2]:
-                    await message.answer('Пароль верный')
+                    
                     # Saving information in the database about new user
-                    await message.answer(f'{data["name"]} {data["group"]}')
                     await db_users.insert_users(name=data['name'], group_id=group_info_fetch[0][0], tg_id=message.from_user.id)
                     user_id = (await db_users.fetch_users(tg_id=message.from_user.id))[0][0]
-                    await db_groups_members.insert_groups_members(member_id=user_id, group_id=group_info_fetch[0][0],
-                                                   role=int(data['role']))
+                    await db_groups_members.insert_groups_members(
+                        member_id=user_id,
+                        group_id=group_info_fetch[0][0],
+                        role=int(data['role'])
+                    )
+                    await bot.send_message(
+                        chat_id=message.chat.id,
+                        text=f'ОТЛИЧНО, {data["name"]}! Вы присоединились к группе {data["group"]}',
+                        reply_markup=keyboards.client_functions_mkp
+                    )
                     await state.finish()
                 else:
                     await message.answer('Пароль неверный\nВведите пароль снова', reply_markup=keyboards.reg_move_mkp)
@@ -210,7 +218,7 @@ def register_handlers(dp: Dispatcher):
     dp.register_message_handler(user_group_set, state=FSMregister.group, content_types=types.ContentTypes.TEXT)
     dp.register_message_handler(user_password_check, state=FSMregister.password, content_types=types.ContentTypes.TEXT)
     dp.register_message_handler(user_password_repeating, state=FSMregister.password_repeat,  content_types=types.ContentTypes.TEXT)
-    
+        
     dp.register_callback_query_handler(text='btn_regular_user', callback=user_role_regular_set, state=FSMregister.role)
     dp.register_callback_query_handler(text='btn_owner', callback=user_role_owner_set, state=FSMregister.role)
     dp.register_callback_query_handler(text='btn_cancel', callback=cancel_reg_btn, state='*')
