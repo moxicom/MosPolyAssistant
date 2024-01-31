@@ -423,11 +423,6 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
                 files=None,
                 created_at=datetime.now()
             )
-
-            await bot.send_message(
-                chat_id=callback_query.from_user.id,
-                text="Сообщение отправлено. Для вызова панели управления: > /help <"
-            )
             
             # The tg_id to exclude
             exclude_tg_id = callback_query.from_user.id
@@ -439,6 +434,11 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
                     tag = "Корневой тег"
                 message_text = f"Добавлено новое сообщение!\nТег: {tag}\n{user_text}"
                 await bot.send_message(chat_id=id, text=message_text)
+
+            await bot.send_message(
+            chat_id=callback_query.from_user.id,
+            text="Сообщение отправлено. Для вызова панели управления: > /help <"
+            )
 
         except Exception as ex:
             await bot.send_message(callback_query.message.from_user.id, "Произошла ошибка при добавлении сообщения.")
