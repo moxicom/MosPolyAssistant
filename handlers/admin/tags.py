@@ -388,41 +388,60 @@ async def get_tg_ids_in_group(group_id: int, exclude_tg_id: int):
 
 async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        user_text = data['user_text']
-        # this is a tag text (description)
-        tag = data['tag']
-        position_id = data['position_id']
+        try:
+            # Extracting data from state proxy
+            user_text = data['user_text']
+            # This is a tag text (description)
+            tag = data['tag']
+            position_id = data['position_id']
 
-        if position_id == -1:
-            position_id = None
-        
-        await bot.answer_callback_query(callback_query.id)
-        
-        # !!!!!!!!!!!!!!!!!!!!!!
-        group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
-        
-        # Fetch all existing tags
-        existing_tags = await db_tags.fetch_tags(group_id=group_id)
-        # !!!!!!!!!!!!!!!!!!!!!!
+            if position_id == -1:
+                position_id = None
 
-        # Insert the new tag into the tags table
-        tag_id = position_id
-        if tag not in existing_tags and tag != ROOT_TAG_CODE:
-            await db_tags.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
-            tag_id = await db_tags.get_tag_id_by_name(tag_name=tag, group_id=group_id)
+            await bot.answer_callback_query(callback_query.id)
+            
+            # Fetching the group ID by Telegram ID
+            group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
+            
+            # Fetching all existing tags
+            existing_tags = await db_tags.fetch_tags(group_id=group_id)
 
-        # Insert the message into the messages table
-        await db_messages.insert_messages(group_id=group_id, title=user_text[:50], text=user_text, tag_id=tag_id, images=None,
-                                 videos=None, files=None, created_at=datetime.now())
+            # Inserting the new tag into the tags table
+            tag_id = position_id
+            if tag not in existing_tags and tag != ROOT_TAG_CODE:
+                await db_tags.insert_tags(group_id=group_id, name=tag, parent_id=position_id)
+                tag_id = await db_tags.get_tag_id_by_name(tag_name=tag, group_id=group_id)
 
-        await bot.send_message(chat_id=callback_query.from_user.id, text="Сообщение отправлено. Для вызова панели управления: > /help <")
-        # The tg_id to exclude
-        exclude_tg_id = callback_query.from_user.id
-        tg_ids = await get_tg_ids_in_group(group_id, exclude_tg_id)
-        for id in tg_ids:
-            if tag == ROOT_TAG_CODE:
-                tag = "Корневой тег"
-            await bot.send_message(chat_id=id, text=tag + '\n' + user_text)
+            # Inserting the message into the messages table
+            await db_messages.insert_messages(
+                group_id=group_id,
+                title=user_text[:50],
+                text=user_text,
+                tag_id=tag_id,
+                images=None,
+                videos=None,
+                files=None,
+                created_at=datetime.now()
+            )
+
+            await bot.send_message(
+                chat_id=callback_query.from_user.id,
+                text="Сообщение отправлено. Для вызова панели управления: > /help <"
+            )
+            
+            # The tg_id to exclude
+            exclude_tg_id = callback_query.from_user.id
+            tg_ids = await get_tg_ids_in_group(group_id, exclude_tg_id)
+
+            # Sending a message to user's group
+            for id in tg_ids:
+                if tag == ROOT_TAG_CODE:
+                    tag = "Корневой тег"
+                message_text = f"Добавлено новое сообщение!\nТег: {tag}\n{user_text}"
+                await bot.send_message(chat_id=id, text=message_text)
+
+        except Exception as ex:
+            await bot.send_message(callback_query.message.from_user.id, "Произошла ошибка при добавлении сообщения.")
         await state.finish()
 
 
