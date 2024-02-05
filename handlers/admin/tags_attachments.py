@@ -40,7 +40,6 @@ async def received_attachments_handler(message: types.Message, state: FSMContext
 
 async def end_process_click_handler (message: types.Message, state: FSMContext):
     '''End addition attachments process'''
-    await attachments.send_state_media_group(message, state)
     await tags.confirm_full_message(message, state)
 
 
@@ -52,3 +51,5 @@ async def get_attachments(state: FSMContext):
     '''Returns MediaInput from state data.'''
     return await attachments.get_state_media_group(state)
 
+async def send_attachments(media, chat_id, state):
+    await attachments.send_state_media_group(media, chat_id, state)

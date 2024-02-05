@@ -1,7 +1,7 @@
 import logging
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton, InputMediaDocument, InputMediaVideo, ReplyKeyboardRemove
+from aiogram.types import ParseMode, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton, InputMediaDocument, InputMediaVideo, ReplyKeyboardRemove, InputMediaAnimation
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -59,7 +59,7 @@ class MediaInput:
         self.videos = []
 
 
-async def update_state_with_media_group(user_id_to_send_info: int, message: types.Message, state: FSMContext):
+async def update_state_with_media_group(message: types.Message, state: FSMContext):
     '''Update state with media group'''
     media_input = await state.get_data()
     media_input = media_input.get('media_input')
@@ -70,16 +70,21 @@ async def update_state_with_media_group(user_id_to_send_info: int, message: type
         if message.photo:
             photo_id = message.photo[-1].file_id
             media_input.photos.append(photo_id)
-
-        elif message.document:
-            media_input.documents.append(message.document.file_id)
+            logging.info("Message added")
 
         elif message.video:
-            for video in message.video:
-                media_input.videos.append(message.video.file_id)
-        await state.update_data(media_input=media_input)
+            media_input.videos.append(message.video.file_id)
+            logging.info("Video added")
         
-
+        elif message.document:
+            media_input.documents.append(message.document.file_id)
+            logging.info("Document added")
+        
+        await state.update_data(media_input=media_input)
+        print()
+        for i in message:
+            print(i)
+        print()
     except Exception as e:
         logging.warning(f'|attachments/update_state_with_media_group| An error has occurred: {e}')
         await state.finish()
@@ -91,15 +96,15 @@ async def get_state_media_group(state: FSMContext) -> MediaInput:
     try:
         async with state.proxy() as data:
             media_group : MediaInput = data['media_input']
-            photos = media_group.photos
-            documents = media_group.documents
-            videos = media_group.videos
-            for i in photos:
-                print("Photo:", i)
-            for i in documents:
-                print("Doc:", i)
-            for i in videos:
-                print("Video:", i)
+            # photos = media_group.photos
+            # documents = media_group.documents
+            # videos = media_group.videos
+            # for i in photos:
+            #     print("Photo:", i)
+            # for i in documents:
+            #     print("Doc:", i)
+            # for i in videos:
+            #     print("Video:", i)
         media = media_group
     except Exception as e:
         logging.warning(f'|attachments/get_media_group| An error has occurred: {e}')
@@ -109,16 +114,15 @@ async def get_state_media_group(state: FSMContext) -> MediaInput:
 
 async def receive_message_with_media(message: types.Message, state: FSMContext, reply_keyboard_text: str = "Получить медиа"):
     '''Receives attachments from user, updates state with them, creates reply keyboard to continue message sending, ask user when each attachment were loaded'''
-    await update_state_with_media_group(user_id_to_send_info=message.from_user.id, message=message, state=state)
+    await update_state_with_media_group(message=message, state=state)
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton(reply_keyboard_text))
     await bot.send_message(message.from_user.id, "Медиа загружено", reply_markup = keyboard)
     
 
-async def send_state_media_group(message: types.Message, state: FSMContext):
+async def send_state_media_group(media: MediaInput, chat_id, state: FSMContext):
     '''Handler for sending message with media'''
-    chat_id = message.from_user.id
     try:
-        media = await get_state_media_group(state)
+        logging.info(media)
         if media.photos:
             photos = list(map(lambda photo_id: InputMediaPhoto(photo_id), media.photos))
             await bot.send_media_group(chat_id, photos)
@@ -128,13 +132,19 @@ async def send_state_media_group(message: types.Message, state: FSMContext):
             await bot.send_media_group(chat_id, documents)
 
         if media.videos:
-            videos = list(map(lambda video_id: InputMediaVideo(video_id), media.videos))
-            await bot.send_video(chat_id, videos)
-
+            # videos = list(map(lambda video_id: InputMediaVideo(video_id), media.videos))
+            videos = [
+                types.InputMediaVideo(
+                    media=video_id,
+                    supports_streaming=True,
+                ) for video_id in media.videos
+            ]
+            await bot.send_media_group(chat_id, videos)
+        
         await bot.send_message(chat_id, "Бот загрузил эти медиа", reply_markup=ReplyKeyboardRemove())
         await state.update_data(media_input=MediaInput())
     except Exception as ex:
-        await message.answer(f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
+        await bot.send_message(chat_id, f"Ошибка: {ex}", reply_markup=ReplyKeyboardMarkup())
         await state.finish()
     # await state.finish() ### !!!!!!!
     return

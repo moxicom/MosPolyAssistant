@@ -430,6 +430,7 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
             )
 
             media = await tags_attachments.get_attachments(state)
+            await tags_attachments.send_attachments(media, callback_query.message.chat.id, state)
             
             # The tg_id to exclude
             exclude_tg_id = callback_query.from_user.id
