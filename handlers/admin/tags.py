@@ -12,6 +12,7 @@ from Db import db_tags as db_tags
 from Db import db_users as db_users
 from Db import db_messages as db_messages
 import handlers.admin.tags_attachments as tags_attachments
+from handlers.admin.attachments import MediaInput
 
 
 logger = logging.getLogger('[LOG]')
@@ -343,7 +344,7 @@ async def confirm_tag_position(callback_query: types.CallbackQuery, state: FSMCo
 
 ### ATTACHMENTS ADDING PROCESS
 
-async def confirm_full_message(message: types.Message, state: FSMContext):
+async def confirm_full_message(message: types.Message,  state: FSMContext):
     async with state.proxy() as data:
         user_text = data['user_text']
         try:
@@ -379,8 +380,6 @@ async def confirm_full_message(message: types.Message, state: FSMContext):
             await state.finish()
             return
 
-        await States.CONFIRM.set()
-
 
 async def get_tg_ids_in_group(group_id: int, exclude_tg_id: int):
     users_in_group = await db_users.fetch_users_in_group(group_id)
@@ -399,7 +398,7 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
 
             if position_id == -1:
                 position_id = None
-
+            
             # await bot.answer_callback_query(callback_query.id)
             await bot.delete_message(
                 chat_id=callback_query.message.chat.id,
@@ -429,6 +428,8 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
                 files=None,
                 created_at=datetime.now()
             )
+
+            media = await tags_attachments.get_attachments(state)
             
             # The tg_id to exclude
             exclude_tg_id = callback_query.from_user.id
@@ -514,8 +515,8 @@ def tags_handlers(dp: Dispatcher):
                                        state=[States.CHOOSE_ACTION, States.EXISTING_TAG])
 
     # dp.register_callback_query_handler(process_callback_actual_existing_tag, state=States.EXISTING_TAG)
-    dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "admin-tag-confirm_full_yes", state=States.CONFIRM)
-    dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "admin-tag-confirm_full_no", state=States.CONFIRM)
+    dp.register_callback_query_handler(confirm_full_yes, lambda c: c.data == "admin-tag-confirm_full_yes", state=States.ATTACHMENTS)
+    dp.register_callback_query_handler(confirm_full_no, lambda c: c.data == "admin-tag-confirm_full_no", state=States.ATTACHMENTS)
     dp.register_callback_query_handler(confirm_tag_yes, lambda c: c.data == "confirm_tag_yes", state=States.CONFIRM)
     dp.register_callback_query_handler(confirm_tag_no, lambda c: c.data == "confirm_tag_no", state=States.CONFIRM)
 

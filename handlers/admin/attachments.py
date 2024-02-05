@@ -63,26 +63,21 @@ async def update_state_with_media_group(user_id_to_send_info: int, message: type
     '''Update state with media group'''
     media_input = await state.get_data()
     media_input = media_input.get('media_input')
-    # print('|attachments/update_state_with_media_group| - media_input \n\t', media_input)
     if not media_input:
         logging.info(f'|attachments/update_state_with_media_group| MediaInput is None, creating new one')
         media_input = MediaInput()
-    # print('media_input images', media_input.photos )
     try:
         if message.photo:
             photo_id = message.photo[-1].file_id
             media_input.photos.append(photo_id)
 
         elif message.document:
-            # print("document: ", message.document.file_id)
             media_input.documents.append(message.document.file_id)
 
         elif message.video:
             for video in message.video:
                 media_input.videos.append(message.video.file_id)
-        # print('media_input docs', media_input.documents )
         await state.update_data(media_input=media_input)
-        # print(await state.get_data())
         
 
     except Exception as e:
@@ -90,7 +85,7 @@ async def update_state_with_media_group(user_id_to_send_info: int, message: type
         await state.finish()
 
 
-async def get_state_media_group(user_id_to_send: int, user_id_to_send_info: int, state: FSMContext) -> MediaInput:
+async def get_state_media_group(state: FSMContext) -> MediaInput:
     '''Get media group from state'''
     media = MediaInput()
     try:
@@ -99,9 +94,12 @@ async def get_state_media_group(user_id_to_send: int, user_id_to_send_info: int,
             photos = media_group.photos
             documents = media_group.documents
             videos = media_group.videos
-            print('photos', photos)
-            print('documents', documents)
-            print('videos', videos)
+            for i in photos:
+                print("Photo:", i)
+            for i in documents:
+                print("Doc:", i)
+            for i in videos:
+                print("Video:", i)
         media = media_group
     except Exception as e:
         logging.warning(f'|attachments/get_media_group| An error has occurred: {e}')
@@ -120,7 +118,7 @@ async def send_state_media_group(message: types.Message, state: FSMContext):
     '''Handler for sending message with media'''
     chat_id = message.from_user.id
     try:
-        media = await get_state_media_group(message.from_user.id, message.from_user.id, state)
+        media = await get_state_media_group(state)
         if media.photos:
             photos = list(map(lambda photo_id: InputMediaPhoto(photo_id), media.photos))
             await bot.send_media_group(chat_id, photos)
@@ -140,7 +138,6 @@ async def send_state_media_group(message: types.Message, state: FSMContext):
         await state.finish()
     # await state.finish() ### !!!!!!!
     return
-
 
 # def temp_attachments_handler(dp: Dispatcher):
 #     dp.register_message_handler(temp_start, commands=['attachments'], state='*')

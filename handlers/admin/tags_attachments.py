@@ -30,7 +30,7 @@ async def ask_for_attachments_necessity(callback_query: types.CallbackQuery, sta
 async def ask_for_attachments_message(callback_query: types.CallbackQuery, state: FSMContext):
     '''Ask user if he wants to send attachments by one message - invokes when user used button with callback data `yes`'''
     await callback_query.answer()
-    await bot.send_message(callback_query.from_user.id, "Отправьте медиафайлы, которые хотите отправить пользователю.")
+    await bot.send_message(callback_query.from_user.id, "Отправьте медиафайлы, которые хотите прикрепить.")
 
 
 async def received_attachments_handler(message: types.Message, state: FSMContext):
@@ -40,11 +40,15 @@ async def received_attachments_handler(message: types.Message, state: FSMContext
 
 async def end_process_click_handler (message: types.Message, state: FSMContext):
     '''End addition attachments process'''
-    # await attachments.send_state_media_group(message, state)
+    await attachments.send_state_media_group(message, state)
     await tags.confirm_full_message(message, state)
 
 
 async def decline_attachments(callback_query: types.CallbackQuery, state: FSMContext):
     '''Decline attachments - invokes when user used button with callback data `no`'''
     await tags.confirm_full_message(callback_query.message, state)
+
+async def get_attachments(state: FSMContext):
+    '''Returns MediaInput from state data.'''
+    return await attachments.get_state_media_group(state)
 
