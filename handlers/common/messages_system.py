@@ -4,6 +4,7 @@ from Db import db_client as db_client
 from config import bot
 
 async def send_message(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
     message_id = int(callback_query.data.split(":")[1])
     msg = await db_client.fetch_message_by_id(message_id)
     if msg: 

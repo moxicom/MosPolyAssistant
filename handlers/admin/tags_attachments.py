@@ -16,8 +16,14 @@ import handlers.admin.attachments as attachments
 async def ask_for_attachments_necessity(callback_query: types.CallbackQuery, state: FSMContext):
     '''Ask user if he wants to add attachments to the message'''
     markup = InlineKeyboardMarkup().add(InlineKeyboardButton("Да", callback_data="yes")).add(InlineKeyboardButton("Нет", callback_data="no"))
-    await callback_query.answer()
-    await bot.send_message(callback_query.from_user.id, "Хотите ли вы добавить медиа? (Изображения, файлы, видео)",  reply_markup=markup)
+    # await callback_query.answer()
+    # await bot.send_message(callback_query.from_user.id, "Хотите ли вы добавить медиа? (Изображения, файлы, видео)",  reply_markup=markup)
+    await bot.edit_message_text(
+        text="Хотите ли вы добавить медиа? (Изображения, файлы, видео)",
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        reply_markup=markup
+    )
     await tags.States.ATTACHMENTS.set()
 
 

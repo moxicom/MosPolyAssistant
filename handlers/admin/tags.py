@@ -137,17 +137,19 @@ async def ask_for_tag(callback_query: types.CallbackQuery, state: FSMContext):
     markup.add(InlineKeyboardButton("Отмена", callback_data="cancel_tag"))
 
     # await message.reply("Выберете тег", reply_markup=markup)
-    await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
-                            text="Выберете тег",
-                            reply_markup=markup
-                            )
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text="Выберете тег",
+        reply_markup=markup
+    )
     await States.CHOOSE_ACTION.set()
 
 
 async def process_callback_existing_tag(callback_query: types.CallbackQuery, state: FSMContext):
     logger.info("Adding existing tag")
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.message.chat.id, "Выберите существующий тег")
+    # await bot.send_message(callback_query.message.chat.id, "Выберите существующий тег")
     await invoke_tag_menu(callback_query, state, show_create_btn=True)
     await States.EXISTING_TAG.set()
 
@@ -398,7 +400,11 @@ async def confirm_full_yes(callback_query: types.CallbackQuery, state: FSMContex
             if position_id == -1:
                 position_id = None
 
-            await bot.answer_callback_query(callback_query.id)
+            # await bot.answer_callback_query(callback_query.id)
+            await bot.delete_message(
+                chat_id=callback_query.message.chat.id,
+                message_id=callback_query.message.message_id
+            )
             
             # Fetching the group ID by Telegram ID
             group_id = await general.get_group_id_by_tg_id(tg_id=callback_query.from_user.id)
